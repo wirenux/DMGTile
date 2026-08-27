@@ -22,6 +22,7 @@ struct DMGTile {
     dirty: bool,
     texture: Option<egui::TextureHandle>,
     current_shade: u8,
+    right_shade: u8,
 }
 
 impl Default for DMGTile {
@@ -32,6 +33,7 @@ impl Default for DMGTile {
             dirty: true, // force first-frame render
             texture: None,
             current_shade: 3,
+            right_shade: 0,
         }
     }
 }
@@ -128,33 +130,61 @@ impl eframe::App for DMGTile {
                 && let Some(pointer_pos) = response.interact_pointer_pos()
             {
                 if ui.input(|i| i.pointer.secondary_down()) || response.secondary_clicked() {
-                    self.draw(origin, pointer_pos, 0); // right click
+                    self.draw(origin, pointer_pos, self.right_shade); // right click
                 } else {
                     self.draw(origin, pointer_pos, self.current_shade); // left click
                 }
             }
             ui.horizontal(|ui| {
-                ui.spacing_mut().item_spacing.x = 0.0;
+                ui.label("L");
+                egui::Frame::default()
+                    .fill(Self::shade_color(self.current_shade))
+                    .stroke(egui::Stroke::new(1.0, egui::Color32::from_gray(50)))
+                    .inner_margin(egui::Margin::symmetric(6, 2))
+                    .show(ui, |ui| {
+                        let text_color = if self.current_shade <= 1 { Color32::BLACK } else { Color32::WHITE };
+                        ui.label(egui::RichText::new(self.current_shade.to_string()).color(text_color));
+                    });
 
-                for shade in 0u8..4 {
-                    let text_color = if shade <= 1 { Color32::BLACK } else { Color32::WHITE };
-                    let selected = self.current_shade == shade;
+                ui.label("R");
+                egui::Frame::default()
+                    .fill(Self::shade_color(self.right_shade))
+                    .stroke(egui::Stroke::new(1.0, egui::Color32::from_gray(50)))
+                    .inner_margin(egui::Margin::symmetric(6, 2))
+                    .show(ui, |ui| {
+                        let text_color = if self.right_shade <= 1 { Color32::BLACK } else { Color32::WHITE };
+                        ui.label(egui::RichText::new(self.right_shade.to_string()).color(text_color));
+                    });
 
-                    let stroke = if selected {
-                        egui::Stroke::new(2.0, egui::Color32::BLUE)
-                    } else {
-                        egui::Stroke::NONE
-                    };
 
-                    let button = egui::Button::new(egui::RichText::new(shade.to_string()).color(text_color))
-                        .fill(Self::shade_color(shade))
-                        .stroke(stroke)
-                        .min_size(egui::vec2(24.0, 20.0));
+                ui.horizontal(|ui| {
+                    ui.spacing_mut().item_spacing.x = 0.0;
 
-                    if ui.add(button).clicked() {
-                        self.current_shade = shade;
+                    for shade in 0u8..4 {
+                        let text_color = if shade <= 1 { Color32::BLACK } else { Color32::WHITE };
+                        let selected = self.current_shade == shade;
+                        let right_selected = self.right_shade == shade;
+                        let stroke = if selected {
+                            egui::Stroke::new(2.0, egui::Color32::BLUE)
+                        } else if right_selected {
+                            egui::Stroke::new(2.0, egui::Color32::RED)
+                        } else {
+                            egui::Stroke::NONE
+                        };
+                        let button = egui::Button::new(egui::RichText::new(shade.to_string()).color(text_color))
+                            .fill(Self::shade_color(shade))
+                            .stroke(stroke)
+                            .min_size(egui::vec2(24.0, 20.0));
+
+                        let response = ui.add(button);
+                        if response.clicked() {
+                            self.current_shade = shade;
+                        }
+                        if response.secondary_clicked() {
+                            self.right_shade = shade;
+                        }
                     }
-                }
+                });
             });
         });
     }
