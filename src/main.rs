@@ -104,17 +104,34 @@ impl eframe::App for DMGTile {
             if (response.clicked() || response.dragged())
                 && let Some(pointer_pos) = response.interact_pointer_pos()
             {
-                let relative = pointer_pos - origin;
-                let col = (relative.x / CELL_SIZE) as i32;
-                let row = (relative.y / CELL_SIZE) as i32;
+                if ui.input(|i| i.pointer.secondary_down()) || response.secondary_clicked() {
+                    let relative = pointer_pos - origin;
+                    let col = (relative.x / CELL_SIZE) as i32;
+                    let row = (relative.y / CELL_SIZE) as i32;
 
-                if col >= 0 && col < GRID_SIZE as i32 && row >= 0 && row < GRID_SIZE as i32 {
-                    let index = row as usize * GRID_SIZE + col as usize;
+                    if col >= 0 && col < GRID_SIZE as i32 && row >= 0 && row < GRID_SIZE as i32 {
+                        let index = row as usize * GRID_SIZE + col as usize;
 
-                    if self.previous_pixels != Some(index) {
-                        self.pixels[index] = 2; // hardcoded shade
-                        self.previous_pixels = Some(index);
-                        self.dirty = true; // mark for texture rebuild next frame
+                        if self.previous_pixels != Some(index) {
+                            self.pixels[index] = 0; // hardcoded shade
+                            self.previous_pixels = Some(index);
+                            self.dirty = true; // mark for texture rebuild next frame
+                        }
+                    }
+
+                } else {
+                    let relative = pointer_pos - origin;
+                    let col = (relative.x / CELL_SIZE) as i32;
+                    let row = (relative.y / CELL_SIZE) as i32;
+
+                    if col >= 0 && col < GRID_SIZE as i32 && row >= 0 && row < GRID_SIZE as i32 {
+                        let index = row as usize * GRID_SIZE + col as usize;
+
+                        if self.previous_pixels != Some(index) {
+                            self.pixels[index] = 2; // hardcoded shade
+                            self.previous_pixels = Some(index);
+                            self.dirty = true; // mark for texture rebuild next frame
+                        }
                     }
                 }
             }
