@@ -1,4 +1,5 @@
 use eframe::egui;
+use egui::Color32;
 
 const CELL_SIZE: f32 = 32.0;
 const GRID_SIZE: usize = 8;
@@ -36,6 +37,15 @@ impl Default for DMGTile {
 }
 
 impl DMGTile {
+    fn shade_color(shade: u8) -> egui::Color32 {
+        match shade {
+            0 => egui::Color32::from_gray(255),
+            1 => egui::Color32::from_gray(170),
+            2 => egui::Color32::from_gray(85),
+            _ => egui::Color32::from_gray(0),
+        }
+    }
+
     fn rebuild_texture(&mut self, ctx: &egui::Context) {
         let mut image = egui::ColorImage::new(
             [GRID_SIZE, GRID_SIZE],
@@ -46,12 +56,7 @@ impl DMGTile {
             for col in 0..GRID_SIZE {
                 let index = row * GRID_SIZE + col;
                 let shade = self.pixels[index];
-                let color = match shade {
-                    0 => egui::Color32::from_gray(255),
-                    1 => egui::Color32::from_gray(170),
-                    2 => egui::Color32::from_gray(85),
-                    _ => egui::Color32::from_gray(0),
-                };
+                let color = Self::shade_color(shade);
                 image.pixels[index] = color;
             }
         }
@@ -129,8 +134,26 @@ impl eframe::App for DMGTile {
                 }
             }
             ui.horizontal(|ui| {
+                ui.spacing_mut().item_spacing.x = 0.0;
+
                 for shade in 0u8..4 {
-                    ui.selectable_value(&mut self.current_shade, shade, shade.to_string());
+                    let text_color = if shade <= 1 { Color32::BLACK } else { Color32::WHITE };
+                    let selected = self.current_shade == shade;
+
+                    let stroke = if selected {
+                        egui::Stroke::new(2.0, egui::Color32::BLUE)
+                    } else {
+                        egui::Stroke::NONE
+                    };
+
+                    let button = egui::Button::new(egui::RichText::new(shade.to_string()).color(text_color))
+                        .fill(Self::shade_color(shade))
+                        .stroke(stroke)
+                        .min_size(egui::vec2(24.0, 20.0));
+
+                    if ui.add(button).clicked() {
+                        self.current_shade = shade;
+                    }
                 }
             });
         });
