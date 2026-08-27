@@ -20,6 +20,7 @@ struct DMGTile {
     previous_pixels: Option<usize>,
     dirty: bool,
     texture: Option<egui::TextureHandle>,
+    current_shade: u8,
 }
 
 impl Default for DMGTile {
@@ -29,6 +30,7 @@ impl Default for DMGTile {
             previous_pixels: None,
             dirty: true, // force first-frame render
             texture: None,
+            current_shade: 3,
         }
     }
 }
@@ -123,9 +125,14 @@ impl eframe::App for DMGTile {
                 if ui.input(|i| i.pointer.secondary_down()) || response.secondary_clicked() {
                     self.draw(origin, pointer_pos, 0); // right click
                 } else {
-                    self.draw(origin, pointer_pos, 2); // left click
+                    self.draw(origin, pointer_pos, self.current_shade); // left click
                 }
             }
+            ui.horizontal(|ui| {
+                for shade in 0u8..4 {
+                    ui.selectable_value(&mut self.current_shade, shade, shade.to_string());
+                }
+            });
         });
     }
 }
