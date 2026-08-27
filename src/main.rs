@@ -62,6 +62,22 @@ impl DMGTile {
 
         self.dirty = false;
     }
+
+    fn draw(&mut self, origin: egui::Pos2, pointer_pos: egui::Pos2, color: u8) {
+        let relative = pointer_pos - origin;
+        let col = (relative.x / CELL_SIZE) as i32;
+        let row = (relative.y / CELL_SIZE) as i32;
+
+        if col >= 0 && col < GRID_SIZE as i32 && row >= 0 && row < GRID_SIZE as i32 {
+            let index = row as usize * GRID_SIZE + col as usize;
+
+            if self.previous_pixels != Some(index) {
+                self.pixels[index] = color;
+                self.previous_pixels = Some(index);
+                self.dirty = true; // mark for texture rebuild next frame
+            }
+        }
+    }
 }
 
 impl eframe::App for DMGTile {
@@ -105,34 +121,9 @@ impl eframe::App for DMGTile {
                 && let Some(pointer_pos) = response.interact_pointer_pos()
             {
                 if ui.input(|i| i.pointer.secondary_down()) || response.secondary_clicked() {
-                    let relative = pointer_pos - origin;
-                    let col = (relative.x / CELL_SIZE) as i32;
-                    let row = (relative.y / CELL_SIZE) as i32;
-
-                    if col >= 0 && col < GRID_SIZE as i32 && row >= 0 && row < GRID_SIZE as i32 {
-                        let index = row as usize * GRID_SIZE + col as usize;
-
-                        if self.previous_pixels != Some(index) {
-                            self.pixels[index] = 0; // hardcoded shade
-                            self.previous_pixels = Some(index);
-                            self.dirty = true; // mark for texture rebuild next frame
-                        }
-                    }
-
+                    self.draw(origin, pointer_pos, 0); // right click
                 } else {
-                    let relative = pointer_pos - origin;
-                    let col = (relative.x / CELL_SIZE) as i32;
-                    let row = (relative.y / CELL_SIZE) as i32;
-
-                    if col >= 0 && col < GRID_SIZE as i32 && row >= 0 && row < GRID_SIZE as i32 {
-                        let index = row as usize * GRID_SIZE + col as usize;
-
-                        if self.previous_pixels != Some(index) {
-                            self.pixels[index] = 2; // hardcoded shade
-                            self.previous_pixels = Some(index);
-                            self.dirty = true; // mark for texture rebuild next frame
-                        }
-                    }
+                    self.draw(origin, pointer_pos, 2); // left click
                 }
             }
         });
