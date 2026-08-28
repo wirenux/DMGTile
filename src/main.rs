@@ -253,12 +253,16 @@ impl eframe::App for DMGTile {
 
             ui.horizontal(|ui| {
                 ui.vertical(|ui| { // Toolbar
+                    ui.set_width(45.0);
+
                     if ui.button("Pen").clicked() { // TODO: Replace every text with icon
                         self.tool = Tool::Draw;
                     }
                     if ui.button("Fill").clicked() {
                         self.tool = Tool::Bucket;
                     }
+
+                    ui.separator();
 
                     if ui.button("Up").clicked() {
                         Self::shift_up(self);
@@ -365,6 +369,7 @@ impl eframe::App for DMGTile {
                                 ui.label(egui::RichText::new(self.right_shade.to_string()).color(text_color));
                             });
 
+                        ui.separator();
 
                         ui.horizontal(|ui| {
                             ui.spacing_mut().item_spacing.x = 0.0;
@@ -394,6 +399,8 @@ impl eframe::App for DMGTile {
                                 }
                             }
                         });
+
+                        ui.separator();
 
                         if ui.button("Gray").clicked() {
                             self.palette = Palette::Grayscale;
