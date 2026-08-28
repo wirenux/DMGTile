@@ -394,6 +394,16 @@ impl eframe::App for DMGTile {
                                 }
                             }
                         });
+
+                        if ui.button("Gray").clicked() {
+                            self.palette = Palette::Grayscale;
+                            self.dirty = true;
+                        }
+
+                        if ui.button("Green").clicked() {
+                            self.palette = Palette::ClassicGreen;
+                            self.dirty = true;
+                        }
                     });
                 });
             });
