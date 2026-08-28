@@ -21,6 +21,11 @@ enum Tool {
     Bucket,
 }
 
+enum Palette {
+    Grayscale,
+    ClassicGreen,
+}
+
 struct DMGTile {
     pixels: [u8; 64],
     previous_pixels: Option<usize>,
@@ -29,6 +34,7 @@ struct DMGTile {
     current_shade: u8,
     right_shade: u8,
     tool: Tool,
+    palette: Palette,
 }
 
 impl Default for DMGTile {
@@ -41,17 +47,26 @@ impl Default for DMGTile {
             current_shade: 3,
             right_shade: 0,
             tool: Tool::Draw,
+            palette: Palette::ClassicGreen,
         }
     }
 }
 
 impl DMGTile {
-    fn shade_color(shade: u8) -> egui::Color32 {
-        match shade {
-            0 => egui::Color32::from_gray(255),
-            1 => egui::Color32::from_gray(170),
-            2 => egui::Color32::from_gray(85),
-            _ => egui::Color32::from_gray(0),
+    fn shade_color(shade: u8, palette: &Palette) -> egui::Color32 {
+        match palette {
+            Palette::Grayscale => match shade {
+                0 => egui::Color32::from_hex("#ffffff").unwrap(),
+                1 => egui::Color32::from_hex("#aaaaaa").unwrap(),
+                2 => egui::Color32::from_hex("#555555").unwrap(),
+                _ => egui::Color32::from_hex("#000000").unwrap(),
+            },
+            Palette::ClassicGreen => match shade {
+                0 => egui::Color32::from_hex("#e0f8d0").unwrap(),
+                1 => egui::Color32::from_hex("#88c070").unwrap(),
+                2 => egui::Color32::from_hex("#346856").unwrap(),
+                _ => egui::Color32::from_hex("#081820").unwrap(),
+            },
         }
     }
 
@@ -65,7 +80,7 @@ impl DMGTile {
             for col in 0..GRID_SIZE {
                 let index = row * GRID_SIZE + col;
                 let shade = self.pixels[index];
-                let color = Self::shade_color(shade);
+                let color = Self::shade_color(shade, &self.palette);
                 image.pixels[index] = color;
             }
         }
@@ -326,11 +341,13 @@ impl eframe::App for DMGTile {
                                 }
                             }
                         }
+                    } else {
+                        self.previous_pixels = None;
                     }
                     ui.horizontal(|ui| {
                         ui.label("L");
                         egui::Frame::default()
-                            .fill(Self::shade_color(self.current_shade))
+                            .fill(Self::shade_color(self.current_shade, &self.palette))
                             .stroke(egui::Stroke::new(1.0, egui::Color32::from_gray(50)))
                             .inner_margin(egui::Margin::symmetric(6, 2))
                             .show(ui, |ui| {
@@ -340,7 +357,7 @@ impl eframe::App for DMGTile {
 
                         ui.label("R");
                         egui::Frame::default()
-                            .fill(Self::shade_color(self.right_shade))
+                            .fill(Self::shade_color(self.right_shade, &self.palette))
                             .stroke(egui::Stroke::new(1.0, egui::Color32::from_gray(50)))
                             .inner_margin(egui::Margin::symmetric(6, 2))
                             .show(ui, |ui| {
@@ -364,7 +381,7 @@ impl eframe::App for DMGTile {
                                     egui::Stroke::NONE
                                 };
                                 let button = egui::Button::new(egui::RichText::new(shade.to_string()).color(text_color))
-                                    .fill(Self::shade_color(shade))
+                                    .fill(Self::shade_color(shade, &self.palette))
                                     .stroke(stroke)
                                     .min_size(egui::vec2(24.0, 20.0));
 
