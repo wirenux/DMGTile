@@ -16,6 +16,11 @@ fn main() -> eframe::Result {
     )
 }
 
+enum Tool {
+    Draw,
+    Bucket,
+}
+
 struct DMGTile {
     pixels: [u8; 64],
     previous_pixels: Option<usize>,
@@ -23,6 +28,7 @@ struct DMGTile {
     texture: Option<egui::TextureHandle>,
     current_shade: u8,
     right_shade: u8,
+    tool: Tool,
 }
 
 impl Default for DMGTile {
@@ -34,6 +40,7 @@ impl Default for DMGTile {
             texture: None,
             current_shade: 3,
             right_shade: 0,
+            tool: Tool::Draw,
         }
     }
 }
@@ -72,6 +79,42 @@ impl DMGTile {
         self.dirty = false;
     }
 
+    fn bucket_fill(&mut self, start_index: usize, new_shade: u8) {
+        let target_shade = self.pixels[start_index];
+
+        if target_shade == new_shade {
+            return; // already the same shade
+        }
+
+        let mut stack = vec![start_index];
+
+        while let Some(index) = stack.pop() {
+            if self.pixels[index] != target_shade {
+                continue;
+            }
+
+            self.pixels[index] = new_shade;
+
+            let row = index / GRID_SIZE;
+            let col = index % GRID_SIZE;
+
+            if row > 0 {
+                stack.push(index - GRID_SIZE); // up
+            }
+            if row < GRID_SIZE - 1 {
+                stack.push(index + GRID_SIZE); // down
+            }
+            if col > 0 {
+                stack.push(index - 1); // left
+            }
+            if col < GRID_SIZE - 1 {
+                stack.push(index + 1); // right
+            }
+        }
+
+        self.dirty = true;
+    }
+
     fn draw(&mut self, origin: egui::Pos2, pointer_pos: egui::Pos2, color: u8) {
         let relative = pointer_pos - origin;
         let col = (relative.x / CELL_SIZE) as i32;
@@ -86,6 +129,103 @@ impl DMGTile {
                 self.dirty = true; // mark for texture rebuild next frame
             }
         }
+    }
+
+    fn shift_up(&mut self) {
+        let mut new_pixels = [0u8; 64];
+
+        for row in 0..GRID_SIZE {
+            let source_row = (row + 1) % GRID_SIZE;
+            for col in 0..GRID_SIZE {
+                new_pixels[row * GRID_SIZE + col] = self.pixels[source_row * GRID_SIZE + col];
+            }
+        }
+
+        self.pixels = new_pixels;
+        self.dirty = true;
+    }
+
+    fn shift_down(&mut self) {
+        let mut new_pixels = [0u8; 64];
+
+        for row in 0..GRID_SIZE {
+            let source_row = (row + GRID_SIZE - 1) % GRID_SIZE;
+            for col in 0..GRID_SIZE {
+                new_pixels[row * GRID_SIZE + col] = self.pixels[source_row * GRID_SIZE + col];
+            }
+        }
+
+        self.pixels = new_pixels;
+        self.dirty = true;
+    }
+
+    fn shift_left(&mut self) {
+        let mut new_pixels = [0u8; 64];
+
+        for row in 0..GRID_SIZE {
+            for col in 0..GRID_SIZE {
+                let source_col = (col + 1) % GRID_SIZE;
+                new_pixels[row * GRID_SIZE + col] = self.pixels[row * GRID_SIZE + source_col];
+            }
+        }
+
+        self.pixels = new_pixels;
+        self.dirty = true;
+    }
+
+    fn shift_right(&mut self) {
+        let mut new_pixels = [0u8; 64];
+
+        for row in 0..GRID_SIZE {
+            for col in 0..GRID_SIZE {
+                let source_col = (col + GRID_SIZE - 1) % GRID_SIZE;
+                new_pixels[row * GRID_SIZE + col] = self.pixels[row * GRID_SIZE + source_col];
+            }
+        }
+
+        self.pixels = new_pixels;
+        self.dirty = true;
+    }
+
+    fn flip_horizontally(&mut self) {
+        let mut new_pixels = [0u8; 64];
+
+        for row in 0..GRID_SIZE {
+            let mirrored_row = GRID_SIZE - 1 - row;
+            for col in 0..GRID_SIZE {
+                new_pixels[row * GRID_SIZE + col] = self.pixels[mirrored_row * GRID_SIZE + col];
+            }
+        }
+
+        self.pixels = new_pixels;
+        self.dirty = true;
+    }
+
+    fn flip_vertically(&mut self) {
+        let mut new_pixels = [0u8; 64];
+
+        for row in 0..GRID_SIZE {
+            for col in 0..GRID_SIZE {
+                let mirrored_col = GRID_SIZE - 1 - col;
+                new_pixels[row * GRID_SIZE + col] = self.pixels[row * GRID_SIZE + mirrored_col];
+            }
+        }
+
+        self.pixels = new_pixels;
+        self.dirty = true;
+    }
+
+    fn rotate_90_clockwise(&mut self) {
+        let mut new_pixels = [0u8; 64];
+
+        for row in 0..GRID_SIZE {
+            for col in 0..GRID_SIZE {
+                new_pixels[row * GRID_SIZE + col] = self.pixels[(GRID_SIZE - 1 - col) * GRID_SIZE + row];
+            }
+        }
+
+        self.pixels = new_pixels;
+        self.dirty = true;
     }
 }
 
@@ -126,13 +266,66 @@ impl eframe::App for DMGTile {
                 );
             }
 
-            if (response.clicked() || response.dragged())
+            ui.vertical(|ui| {
+                if ui.button("Pen").clicked() {
+                    self.tool = Tool::Draw;
+                }
+                if ui.button("Fill").clicked() {
+                    self.tool = Tool::Bucket;
+                }
+
+                if ui.button("Up").clicked() { // TODO: Replace every text with icon
+                    Self::shift_up(self);
+                }
+                if ui.button("Left").clicked() {
+                    Self::shift_left(self);
+                }
+                if ui.button("Right").clicked() {
+                    Self::shift_right(self);
+                }
+                if ui.button("Down").clicked() {
+                    Self::shift_down(self);
+                }
+
+                if ui.button("Flip H").clicked() {
+                    Self::flip_horizontally(self);
+                }
+
+                if ui.button("Flip V").clicked() {
+                    Self::flip_vertically(self);
+                }
+
+                if ui.button("R90").clicked() {
+                    Self::rotate_90_clockwise(self);
+                }
+
+                ui.label("test");
+                ui.label("test");
+            });
+
+            if (response.clicked() || response.dragged() || response.secondary_clicked())
                 && let Some(pointer_pos) = response.interact_pointer_pos()
             {
-                if ui.input(|i| i.pointer.secondary_down()) || response.secondary_clicked() {
-                    self.draw(origin, pointer_pos, self.right_shade); // right click
+                let shade = if ui.input(|i| i.pointer.secondary_down()) || response.secondary_clicked() {
+                    self.right_shade
                 } else {
-                    self.draw(origin, pointer_pos, self.current_shade); // left click
+                    self.current_shade
+                };
+
+                match self.tool {
+                    Tool::Draw => self.draw(origin, pointer_pos, shade),
+                    Tool::Bucket => {
+                        if response.clicked() || response.secondary_clicked() {
+                            let relative = pointer_pos - origin;
+                            let col = (relative.x / CELL_SIZE) as i32;
+                            let row = (relative.y / CELL_SIZE) as i32;
+
+                            if col >= 0 && col < GRID_SIZE as i32 && row >= 0 && row < GRID_SIZE as i32 {
+                                let index = row as usize * GRID_SIZE + col as usize;
+                                self.bucket_fill(index, shade);
+                            }
+                        }
+                    }
                 }
             }
             ui.horizontal(|ui| {
