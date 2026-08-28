@@ -236,147 +236,148 @@ impl eframe::App for DMGTile {
                 self.rebuild_texture(ui.ctx());
             }
 
-            let size = egui::vec2(CELL_SIZE * GRID_SIZE as f32, CELL_SIZE * GRID_SIZE as f32);
-            let texture = self.texture.as_ref().unwrap();
+            ui.horizontal(|ui| {
+                ui.vertical(|ui| { // Toolbar
+                    if ui.button("Pen").clicked() { // TODO: Replace every text with icon
+                        self.tool = Tool::Draw;
+                    }
+                    if ui.button("Fill").clicked() {
+                        self.tool = Tool::Bucket;
+                    }
 
-            let response = ui.add(
-                egui::Image::new(texture)
-                    .fit_to_exact_size(size)
-                    .sense(egui::Sense::click_and_drag()),
-            );
+                    if ui.button("Up").clicked() {
+                        Self::shift_up(self);
+                    }
+                    if ui.button("Left").clicked() {
+                        Self::shift_left(self);
+                    }
+                    if ui.button("Right").clicked() {
+                        Self::shift_right(self);
+                    }
+                    if ui.button("Down").clicked() {
+                        Self::shift_down(self);
+                    }
 
-            let origin = response.rect.min;
-            
-            let painter = ui.painter_at(response.rect);
-            let line_stroke = egui::Stroke::new(1.0, egui::Color32::from_gray(50));
+                    if ui.button("Flip H").clicked() {
+                        Self::flip_horizontally(self);
+                    }
 
-            for i in 0..=GRID_SIZE {
-                let offset = i as f32 * CELL_SIZE;
+                    if ui.button("Flip V").clicked() {
+                        Self::flip_vertically(self);
+                    }
 
-                // vertical line
-                painter.line_segment(
-                    [origin + egui::vec2(offset, 0.0), origin + egui::vec2(offset, size.y)],
-                    line_stroke,
-                );
+                    if ui.button("R90").clicked() {
+                        Self::rotate_90_clockwise(self);
+                    }
+                });
 
-                // horizontal line
-                painter.line_segment(
-                    [origin + egui::vec2(0.0, offset), origin + egui::vec2(size.x, offset)],
-                    line_stroke,
-                );
-            }
+                ui.vertical(|ui| {
+                    let size = egui::vec2(CELL_SIZE * GRID_SIZE as f32, CELL_SIZE * GRID_SIZE as f32);
+                    let texture = self.texture.as_ref().unwrap();
 
-            ui.vertical(|ui| {
-                if ui.button("Pen").clicked() {
-                    self.tool = Tool::Draw;
-                }
-                if ui.button("Fill").clicked() {
-                    self.tool = Tool::Bucket;
-                }
+                    let response = ui.add(
+                        egui::Image::new(texture)
+                            .fit_to_exact_size(size)
+                            .sense(egui::Sense::click_and_drag()),
+                    );
 
-                if ui.button("Up").clicked() { // TODO: Replace every text with icon
-                    Self::shift_up(self);
-                }
-                if ui.button("Left").clicked() {
-                    Self::shift_left(self);
-                }
-                if ui.button("Right").clicked() {
-                    Self::shift_right(self);
-                }
-                if ui.button("Down").clicked() {
-                    Self::shift_down(self);
-                }
+                    let origin = response.rect.min;
 
-                if ui.button("Flip H").clicked() {
-                    Self::flip_horizontally(self);
-                }
+                    let painter = ui.painter_at(response.rect);
+                    let line_stroke = egui::Stroke::new(1.0, egui::Color32::from_gray(50));
 
-                if ui.button("Flip V").clicked() {
-                    Self::flip_vertically(self);
-                }
+                    for i in 0..=GRID_SIZE {
+                        let offset = i as f32 * CELL_SIZE;
 
-                if ui.button("R90").clicked() {
-                    Self::rotate_90_clockwise(self);
-                }
+                        // vertical line
+                        painter.line_segment(
+                            [origin + egui::vec2(offset, 0.0), origin + egui::vec2(offset, size.y)],
+                            line_stroke,
+                        );
 
-                ui.label("test");
-                ui.label("test");
-            });
+                        // horizontal line
+                        painter.line_segment(
+                            [origin + egui::vec2(0.0, offset), origin + egui::vec2(size.x, offset)],
+                            line_stroke,
+                        );
+                    }
 
-            if (response.clicked() || response.dragged() || response.secondary_clicked())
-                && let Some(pointer_pos) = response.interact_pointer_pos()
-            {
-                let shade = if ui.input(|i| i.pointer.secondary_down()) || response.secondary_clicked() {
-                    self.right_shade
-                } else {
-                    self.current_shade
-                };
+                    if (response.clicked() || response.dragged() || response.secondary_clicked())
+                        && let Some(pointer_pos) = response.interact_pointer_pos()
+                    {
+                        let shade = if ui.input(|i| i.pointer.secondary_down()) || response.secondary_clicked() {
+                            self.right_shade
+                        } else {
+                            self.current_shade
+                        };
 
-                match self.tool {
-                    Tool::Draw => self.draw(origin, pointer_pos, shade),
-                    Tool::Bucket => {
-                        if response.clicked() || response.secondary_clicked() {
-                            let relative = pointer_pos - origin;
-                            let col = (relative.x / CELL_SIZE) as i32;
-                            let row = (relative.y / CELL_SIZE) as i32;
+                        match self.tool {
+                            Tool::Draw => self.draw(origin, pointer_pos, shade),
+                            Tool::Bucket => {
+                                if response.clicked() || response.secondary_clicked() {
+                                    let relative = pointer_pos - origin;
+                                    let col = (relative.x / CELL_SIZE) as i32;
+                                    let row = (relative.y / CELL_SIZE) as i32;
 
-                            if col >= 0 && col < GRID_SIZE as i32 && row >= 0 && row < GRID_SIZE as i32 {
-                                let index = row as usize * GRID_SIZE + col as usize;
-                                self.bucket_fill(index, shade);
+                                    if col >= 0 && col < GRID_SIZE as i32 && row >= 0 && row < GRID_SIZE as i32 {
+                                        let index = row as usize * GRID_SIZE + col as usize;
+                                        self.bucket_fill(index, shade);
+                                    }
+                                }
                             }
                         }
                     }
-                }
-            }
-            ui.horizontal(|ui| {
-                ui.label("L");
-                egui::Frame::default()
-                    .fill(Self::shade_color(self.current_shade))
-                    .stroke(egui::Stroke::new(1.0, egui::Color32::from_gray(50)))
-                    .inner_margin(egui::Margin::symmetric(6, 2))
-                    .show(ui, |ui| {
-                        let text_color = if self.current_shade <= 1 { Color32::BLACK } else { Color32::WHITE };
-                        ui.label(egui::RichText::new(self.current_shade.to_string()).color(text_color));
+                    ui.horizontal(|ui| {
+                        ui.label("L");
+                        egui::Frame::default()
+                            .fill(Self::shade_color(self.current_shade))
+                            .stroke(egui::Stroke::new(1.0, egui::Color32::from_gray(50)))
+                            .inner_margin(egui::Margin::symmetric(6, 2))
+                            .show(ui, |ui| {
+                                let text_color = if self.current_shade <= 1 { Color32::BLACK } else { Color32::WHITE };
+                                ui.label(egui::RichText::new(self.current_shade.to_string()).color(text_color));
+                            });
+
+                        ui.label("R");
+                        egui::Frame::default()
+                            .fill(Self::shade_color(self.right_shade))
+                            .stroke(egui::Stroke::new(1.0, egui::Color32::from_gray(50)))
+                            .inner_margin(egui::Margin::symmetric(6, 2))
+                            .show(ui, |ui| {
+                                let text_color = if self.right_shade <= 1 { Color32::BLACK } else { Color32::WHITE };
+                                ui.label(egui::RichText::new(self.right_shade.to_string()).color(text_color));
+                            });
+
+
+                        ui.horizontal(|ui| {
+                            ui.spacing_mut().item_spacing.x = 0.0;
+
+                            for shade in 0u8..4 {
+                                let text_color = if shade <= 1 { Color32::BLACK } else { Color32::WHITE };
+                                let selected = self.current_shade == shade;
+                                let right_selected = self.right_shade == shade;
+                                let stroke = if selected {
+                                    egui::Stroke::new(2.0, egui::Color32::BLUE)
+                                } else if right_selected {
+                                    egui::Stroke::new(2.0, egui::Color32::RED)
+                                } else {
+                                    egui::Stroke::NONE
+                                };
+                                let button = egui::Button::new(egui::RichText::new(shade.to_string()).color(text_color))
+                                    .fill(Self::shade_color(shade))
+                                    .stroke(stroke)
+                                    .min_size(egui::vec2(24.0, 20.0));
+
+                                let response = ui.add(button);
+                                if response.clicked() {
+                                    self.current_shade = shade;
+                                }
+                                if response.secondary_clicked() {
+                                    self.right_shade = shade;
+                                }
+                            }
+                        });
                     });
-
-                ui.label("R");
-                egui::Frame::default()
-                    .fill(Self::shade_color(self.right_shade))
-                    .stroke(egui::Stroke::new(1.0, egui::Color32::from_gray(50)))
-                    .inner_margin(egui::Margin::symmetric(6, 2))
-                    .show(ui, |ui| {
-                        let text_color = if self.right_shade <= 1 { Color32::BLACK } else { Color32::WHITE };
-                        ui.label(egui::RichText::new(self.right_shade.to_string()).color(text_color));
-                    });
-
-
-                ui.horizontal(|ui| {
-                    ui.spacing_mut().item_spacing.x = 0.0;
-
-                    for shade in 0u8..4 {
-                        let text_color = if shade <= 1 { Color32::BLACK } else { Color32::WHITE };
-                        let selected = self.current_shade == shade;
-                        let right_selected = self.right_shade == shade;
-                        let stroke = if selected {
-                            egui::Stroke::new(2.0, egui::Color32::BLUE)
-                        } else if right_selected {
-                            egui::Stroke::new(2.0, egui::Color32::RED)
-                        } else {
-                            egui::Stroke::NONE
-                        };
-                        let button = egui::Button::new(egui::RichText::new(shade.to_string()).color(text_color))
-                            .fill(Self::shade_color(shade))
-                            .stroke(stroke)
-                            .min_size(egui::vec2(24.0, 20.0));
-
-                        let response = ui.add(button);
-                        if response.clicked() {
-                            self.current_shade = shade;
-                        }
-                        if response.secondary_clicked() {
-                            self.right_shade = shade;
-                        }
-                    }
                 });
             });
         });
