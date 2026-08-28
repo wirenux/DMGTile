@@ -357,9 +357,9 @@ impl eframe::App for DMGTile {
                                 let selected = self.current_shade == shade;
                                 let right_selected = self.right_shade == shade;
                                 let stroke = if selected {
-                                    egui::Stroke::new(2.0, egui::Color32::BLUE)
+                                    egui::Stroke::new(1.0, egui::Color32::BLUE)
                                 } else if right_selected {
-                                    egui::Stroke::new(2.0, egui::Color32::RED)
+                                    egui::Stroke::new(1.0, egui::Color32::RED)
                                 } else {
                                     egui::Stroke::NONE
                                 };
