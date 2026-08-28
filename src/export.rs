@@ -1,0 +1,34 @@
+use std::fs::File;
+use std::io::{self, Write};
+use std::path::Path;
+
+pub fn pixels_to_2bpp(pixels: &[u8; 64]) -> [u8; 16] {
+    let mut result_bytes = [0u8; 16];
+
+    for row in 0..8 {
+        let mut low_bytes = 0u8;
+        let mut high_bytes = 0u8;
+
+        for col in 0..8 {
+            let shade = pixels[row * 8 + col] & 0x03; // stay in 0..=3
+            let lsb = shade & 0x01; // get bit 0 (the low bit)
+            let msb = (shade >> 1) & 0x01; // get bit 1 (the high bit)
+
+            let bit_pos = 7 - col;
+            low_bytes |= lsb << bit_pos;
+            high_bytes |= msb << bit_pos;
+        }
+
+        result_bytes[row * 2] = low_bytes;
+        result_bytes[row * 2 + 1] = high_bytes;
+    }
+
+    result_bytes
+}
+
+pub fn export_to_bin<P: AsRef<Path>>(pixels: &[u8; 64], path: P) -> io::Result<()> {
+    let raw_2bpp = pixels_to_2bpp(pixels);
+    let mut file = File::create(path)?;
+    file.write_all(&raw_2bpp)?;
+    Ok(())
+}

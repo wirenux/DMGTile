@@ -1,6 +1,8 @@
 use eframe::egui;
 use egui::Color32;
 
+mod export;
+
 const CELL_SIZE: f32 = 32.0;
 const GRID_SIZE: usize = 8;
 
@@ -27,7 +29,7 @@ enum Palette {
 }
 
 struct DMGTile {
-    pixels: [u8; 64],
+    pub pixels: [u8; 64],
     previous_pixels: Option<usize>,
     dirty: bool,
     texture: Option<egui::TextureHandle>,
@@ -410,6 +412,18 @@ impl eframe::App for DMGTile {
                         if ui.button("Green").clicked() {
                             self.palette = Palette::ClassicGreen;
                             self.dirty = true;
+                        }
+
+                        // DEV TODO: REMOVE FOR RELEASE
+                        if ui.button("print pixels[]").clicked() {
+                            println!("{:?}", self.pixels);
+                        }
+
+                        if ui.button("export .bin").clicked() {
+                            match export::export_to_bin(&self.pixels, "gb/src/tile.bin") {     // TODO: change this for a file dialog
+                                Ok(_) => println!("Successfully exported to tile.bin"),
+                                Err(e) => eprintln!("Failed to export tile: {}", e),
+                            }
                         }
                     });
                 });
