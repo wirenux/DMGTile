@@ -382,7 +382,7 @@ impl eframe::App for DMGTile {
                         match self.tool {
                             Tool::Draw => self.draw(origin, pointer_pos, shade),
                             Tool::Bucket => {
-                                if response.clicked() || response.secondary_clicked() {
+                                if response.clicked() || response.secondary_clicked() || response.dragged() {
                                     let relative = pointer_pos - origin;
                                     let col = (relative.x / CELL_SIZE) as i32;
                                     let row = (relative.y / CELL_SIZE) as i32;
