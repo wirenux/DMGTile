@@ -1,6 +1,5 @@
 use eframe::egui;
 use egui::Color32;
-use rfd;
 
 mod export;
 
@@ -9,13 +8,18 @@ const GRID_SIZE: usize = 8;
 
 fn main() -> eframe::Result {
     let options = eframe::NativeOptions {
-        viewport: egui::ViewportBuilder::default().with_inner_size([1280.0, 720.0]),
+        viewport: egui::ViewportBuilder::default()
+            .with_inner_size([1280.0, 720.0])
+            .with_min_inner_size([500.0, 400.0]),
         ..Default::default()
     };
     eframe::run_native(
         "DMGTile",
         options,
-        Box::new(|_cc| Ok(Box::<DMGTile>::default())),
+        Box::new(|cc| {
+            egui_extras::install_image_loaders(&cc.egui_ctx);
+            Ok(Box::<DMGTile>::default())
+        })
     )
 }
 
@@ -304,39 +308,105 @@ impl eframe::App for DMGTile {
                 ui.vertical(|ui| { // Toolbar
                     ui.set_width(45.0);
 
-                    if ui.button("Pen").clicked() { // TODO: Replace every text with icon
-                        self.tool = Tool::Draw;
-                    }
-                    if ui.button("Fill").clicked() {
-                        self.tool = Tool::Bucket;
-                    }
+                    ui.scope(|ui| {
+                        ui.spacing_mut().button_padding = egui::vec2(2.0, 2.0);
 
-                    ui.separator();
+                        let pen_selected = matches!(self.tool, Tool::Draw);
+                        if ui.add(
+                            egui::Button::image(
+                                egui::Image::new(egui::include_image!("../assets/aseprite/pen.png"))
+                                .texture_options(egui::TextureOptions::NEAREST)
+                                .fit_to_exact_size(egui::vec2(32.0, 32.0)),
+                            )
+                            .selected(pen_selected)
+                        ).clicked() {
+                            self.tool = Tool::Draw;
+                        }
 
-                    if ui.button("Up").clicked() {
-                        Self::shift_up(self);
-                    }
-                    if ui.button("Left").clicked() {
-                        Self::shift_left(self);
-                    }
-                    if ui.button("Right").clicked() {
-                        Self::shift_right(self);
-                    }
-                    if ui.button("Down").clicked() {
-                        Self::shift_down(self);
-                    }
+                        let bucket_selected = matches!(self.tool, Tool::Bucket);
+                        if ui.add(
+                            egui::Button::image(
+                                egui::Image::new(egui::include_image!("../assets/aseprite/bucket.png"))
+                                .texture_options(egui::TextureOptions::NEAREST)
+                                .fit_to_exact_size(egui::vec2(32.0, 32.0)),
+                            )
+                            .selected(bucket_selected)
+                        ).clicked() {
+                            self.tool = Tool::Bucket;
+                        }
 
-                    if ui.button("Flip H").clicked() {
-                        Self::flip_horizontally(self);
-                    }
+                        ui.separator();
 
-                    if ui.button("Flip V").clicked() {
-                        Self::flip_vertically(self);
-                    }
+                        if ui.add(
+                            egui::Button::image(
+                                egui::Image::new(egui::include_image!("../assets/aseprite/up.png"))
+                                .texture_options(egui::TextureOptions::NEAREST)
+                                .fit_to_exact_size(egui::vec2(32.0, 32.0)),
+                            )
+                        ).clicked() {
+                            Self::shift_up(self);
+                        }
 
-                    if ui.button("R90").clicked() {
-                        Self::rotate_90_clockwise(self);
-                    }
+                        if ui.add(
+                            egui::Button::image(
+                                egui::Image::new(egui::include_image!("../assets/aseprite/left.png"))
+                                .texture_options(egui::TextureOptions::NEAREST)
+                                .fit_to_exact_size(egui::vec2(32.0, 32.0)),
+                            )
+                        ).clicked() {
+                            Self::shift_left(self);
+                        }
+
+                        if ui.add(
+                            egui::Button::image(
+                                egui::Image::new(egui::include_image!("../assets/aseprite/right.png"))
+                                .texture_options(egui::TextureOptions::NEAREST)
+                                .fit_to_exact_size(egui::vec2(32.0, 32.0)),
+                            )
+                        ).clicked() {
+                            Self::shift_right(self);
+                        }
+
+                        if ui.add(
+                            egui::Button::image(
+                                egui::Image::new(egui::include_image!("../assets/aseprite/down.png"))
+                                .texture_options(egui::TextureOptions::NEAREST)
+                                .fit_to_exact_size(egui::vec2(32.0, 32.0)),
+                            )
+                        ).clicked() {
+                            Self::shift_down(self);
+                        }
+
+                        if ui.add(
+                            egui::Button::image(
+                                egui::Image::new(egui::include_image!("../assets/aseprite/flipV.png")) // it's reversed cause there is 2 way to understand it
+                                .texture_options(egui::TextureOptions::NEAREST)
+                                .fit_to_exact_size(egui::vec2(32.0, 32.0)),
+                            )
+                        ).clicked() {
+                            Self::flip_horizontally(self);
+                        }
+
+                        if ui.add(
+                            egui::Button::image(
+                                egui::Image::new(egui::include_image!("../assets/aseprite/flipH.png"))
+                                .texture_options(egui::TextureOptions::NEAREST)
+                                .fit_to_exact_size(egui::vec2(32.0, 32.0)),
+                            )
+                        ).clicked() {
+                            Self::flip_vertically(self);
+                        }
+
+                        if ui.add(
+                            egui::Button::image(
+                                egui::Image::new(egui::include_image!("../assets/aseprite/rotate.png"))
+                                .texture_options(egui::TextureOptions::NEAREST)
+                                .fit_to_exact_size(egui::vec2(32.0, 32.0)),
+                            )
+                        ).clicked() {
+                            Self::rotate_90_clockwise(self);
+                        }
+                    });
                 });
 
                 ui.vertical(|ui| {
