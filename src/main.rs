@@ -245,10 +245,50 @@ impl DMGTile {
         self.pixels = new_pixels;
         self.dirty = true;
     }
+
+    fn export_bin_dialog(&self) {
+        if let Some(path) = rfd::FileDialog::new()
+            .set_file_name("tile.bin")
+            .add_filter("Gameboy Tile", &["bin"])
+            .save_file()
+        {
+            match export::export_to_bin(&self.pixels, &path) {
+                Ok(_) => println!("Successfully exported to {:?}", path),
+                Err(e) => println!("Failed to export tile : {}", e),
+            }
+        }
+    }
+
+    fn export_c_dialog(&self) {
+        if let Some(path) = rfd::FileDialog::new()
+            .set_file_name("tile.c")
+            .add_filter("Gameboy Tile", &["c"])
+            .save_file()
+        {
+            match export::export_to_c(&self.pixels, "TileLabel", &path) { // Change the name to an export window
+                Ok(_) => println!("Successfully exported to {:?}", path),
+                Err(e) => println!("Failed to export tile : {}", e),
+            }
+        }
+    }
 }
 
 impl eframe::App for DMGTile {
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
+        egui::Panel::top("menu_bar").show(ui, |ui| {
+            egui::MenuBar::new().ui(ui, |ui| {
+                ui.menu_button("File", |ui| {
+                    if ui.button("Export .bin...").clicked() {
+                        self.export_bin_dialog();
+                        ui.close();
+                    }
+                    if ui.button("Export .c...").clicked() {
+                        self.export_c_dialog();
+                        ui.close();
+                    }
+                });
+            });
+        });
         egui::CentralPanel::default().show(ui, |ui| {
             if self.dirty {
                 self.rebuild_texture(ui.ctx());
@@ -420,28 +460,27 @@ impl eframe::App for DMGTile {
                             println!("{:?}", self.pixels);
                         }
 
-                        if ui.button("Export .bin").clicked() && let Some(path) = rfd::FileDialog::new() // TODO: put it in the File > Export to...
-                            .set_file_name("tile.bin")
-                            .add_filter("Gameboy Tile", &["bin"])
-                            .save_file()
-                        {
-                            match export::export_to_bin(&self.pixels, &path) {
-                                Ok(_) => println!("Successfully exported to {:?}", path),
-                                Err(e) => eprintln!("Failed to export tile: {}", e),
-                            }
-                        }
-
-                        if ui.button("Export .c").clicked() && let Some(path) = rfd::FileDialog::new() // TODO: put it in the File > Export to...
-                            .set_file_name("tile.c")
-                            .add_filter("Gameboy Tile", &["c"])
-                            .save_file()
-                        {
-                            match export::export_to_c(&self.pixels, "TileLabel", &path) { // Change the name to an export window
-                                Ok(_) => println!("Successfully exported to {:?}", path),
-                                Err(e) => eprintln!("Failed to export tile: {}", e),
-                            }
-                        }
-
+                        // if ui.button("Export .bin").clicked() && let Some(path) = rfd::FileDialog::new() // TODO: put it in the File > Export to...
+                        //     .set_file_name("tile.bin")
+                        //     .add_filter("Gameboy Tile", &["bin"])
+                        //     .save_file()
+                        // {
+                        //     match export::export_to_bin(&self.pixels, &path) {
+                        //         Ok(_) => println!("Successfully exported to {:?}", path),
+                        //         Err(e) => eprintln!("Failed to export tile: {}", e),
+                        //     }
+                        // }
+                        //
+                        // if ui.button("Export .c").clicked() && let Some(path) = rfd::FileDialog::new() // TODO: put it in the File > Export to...
+                        //     .set_file_name("tile.c")
+                        //     .add_filter("Gameboy Tile", &["c"])
+                        //     .save_file()
+                        // {
+                        //     match export::export_to_c(&self.pixels, "TileLabel", &path) { // Change the name to an export window
+                        //         Ok(_) => println!("Successfully exported to {:?}", path),
+                        //         Err(e) => eprintln!("Failed to export tile: {}", e),
+                        //     }
+                        // }
                     });
                 });
             });
