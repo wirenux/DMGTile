@@ -420,7 +420,7 @@ impl eframe::App for DMGTile {
                             println!("{:?}", self.pixels);
                         }
 
-                        if ui.button("Export .bin").clicked() && let Some(path) = rfd::FileDialog::new()
+                        if ui.button("Export .bin").clicked() && let Some(path) = rfd::FileDialog::new() // TODO: put it in the File > Export to...
                             .set_file_name("tile.bin")
                             .add_filter("Gameboy Tile", &["bin"])
                             .save_file()
@@ -430,6 +430,18 @@ impl eframe::App for DMGTile {
                                 Err(e) => eprintln!("Failed to export tile: {}", e),
                             }
                         }
+
+                        if ui.button("Export .c").clicked() && let Some(path) = rfd::FileDialog::new() // TODO: put it in the File > Export to...
+                            .set_file_name("tile.c")
+                            .add_filter("Gameboy Tile", &["c"])
+                            .save_file()
+                        {
+                            match export::export_to_c(&self.pixels, "TileLabel", &path) { // Change the name to an export window
+                                Ok(_) => println!("Successfully exported to {:?}", path),
+                                Err(e) => eprintln!("Failed to export tile: {}", e),
+                            }
+                        }
+
                     });
                 });
             });
