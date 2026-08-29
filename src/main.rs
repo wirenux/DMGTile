@@ -1,5 +1,6 @@
 use eframe::egui;
 use egui::Color32;
+use rfd;
 
 mod export;
 
@@ -419,9 +420,13 @@ impl eframe::App for DMGTile {
                             println!("{:?}", self.pixels);
                         }
 
-                        if ui.button("export .bin").clicked() {
-                            match export::export_to_bin(&self.pixels, "gb/src/tile.bin") {     // TODO: change this for a file dialog
-                                Ok(_) => println!("Successfully exported to tile.bin"),
+                        if ui.button("Export .bin").clicked() && let Some(path) = rfd::FileDialog::new()
+                            .set_file_name("tile.bin")
+                            .add_filter("Gameboy Tile", &["bin"])
+                            .save_file()
+                        {
+                            match export::export_to_bin(&self.pixels, &path) {
+                                Ok(_) => println!("Successfully exported to {:?}", path),
                                 Err(e) => eprintln!("Failed to export tile: {}", e),
                             }
                         }
