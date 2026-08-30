@@ -421,6 +421,7 @@ impl eframe::App for DMGTile {
                         self.modified = vec![false; MAX_TILES];
                         self.dirty = true;
                         self.thumbnails = vec![None; MAX_TILES];
+                        self.current_path = None;
                         ui.close();
                     }
                     if ui.button("Open...").clicked() {
