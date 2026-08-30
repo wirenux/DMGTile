@@ -50,6 +50,11 @@ const CUT_SHORTCUT: &str = "Ctrl+X";
 const PASTE_SHORTCUT: &str = "Ctrl+V";
 
 fn main() -> eframe::Result {
+    #[cfg(target_os = "windows")]
+    unsafe {
+        std::env::set_var("WGPU_BACKEND", "dx12");
+    }
+
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
             .with_inner_size([530.0, 380.0])
@@ -61,6 +66,7 @@ fn main() -> eframe::Result {
         options,
         Box::new(|cc| {
             egui_extras::install_image_loaders(&cc.egui_ctx);
+            cc.egui_ctx.set_visuals(egui::Visuals::dark());
             Ok(Box::<DMGTile>::default())
         })
     )
