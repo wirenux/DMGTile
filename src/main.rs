@@ -11,6 +11,32 @@ const MAX_TILES: usize = 128;
 const CELL_SIZE: f32 = 32.0;
 const GRID_SIZE: usize = 8;
 
+#[cfg(target_os = "macos")]
+const NEW_SHORTCUT: &str = "⌘+N";
+#[cfg(target_os = "macos")]
+const OPEN_SHORTCUT: &str = "⌘+O";
+#[cfg(target_os = "macos")]
+const REDO_SHORTCUT: &str = "⌘+⬆+Z";
+#[cfg(target_os = "macos")]
+const SAVE_SHORTCUT: &str = "⌘+S";
+#[cfg(target_os = "macos")]
+const EXIT_SHORTCUT: &str = "⌘+Q";
+#[cfg(target_os = "macos")]
+const UNDO_SHORTCUT: &str = "⌘+Z";
+
+#[cfg(not(target_os = "macos"))]
+const NEW_SHORTCUT: &str = "Ctrl+N";
+#[cfg(not(target_os = "macos"))]
+const OPEN_SHORTCUT: &str = "Ctrl+O";
+#[cfg(not(target_os = "macos"))]
+const REDO_SHORTCUT: &str = "Ctrl+⬆+Z";
+#[cfg(not(target_os = "macos"))]
+const SAVE_SHORTCUT: &str = "Ctrl+S";
+#[cfg(not(target_os = "macos"))]
+const EXIT_SHORTCUT: &str = "Alt+F4";
+#[cfg(not(target_os = "macos"))]
+const UNDO_SHORTCUT: &str = "Ctrl+Z";
+
 fn main() -> eframe::Result {
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
@@ -389,12 +415,14 @@ impl DMGTile {
 
 impl eframe::App for DMGTile {
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
-        let (undo_press, redo_pressed, save_pressed) = ui.ctx().input(|i| {
+        let (undo_press, redo_pressed, save_pressed, new_pressed, open_pressed) = ui.ctx().input(|i| {
             let cmd = i.modifiers.command;
             (
                 cmd && !i.modifiers.shift && i.key_pressed(egui::Key::Z),
                 cmd && i.modifiers.shift && i.key_pressed(egui::Key::Z),
                 cmd && i.key_pressed(egui::Key::S),
+                cmd && i.key_pressed(egui::Key::N),
+                cmd && i.key_pressed(egui::Key::O),
             )
         });
 
@@ -410,12 +438,25 @@ impl eframe::App for DMGTile {
             self.save();
         }
 
+        if open_pressed {
+            self.open_dialog();
+        }
+
+        if new_pressed {
+            self.push_undo();
+            self.tiles = vec![[0u8; 64]; MAX_TILES];
+            self.modified = vec![false; MAX_TILES];
+            self.dirty = true;
+            self.thumbnails = vec![None; MAX_TILES];
+            self.current_path = None;
+        }
+
         self.export_window.show(ui.ctx(), &self.tiles, &self.modified);
 
         egui::Panel::top("menu_bar").show(ui, |ui| {
             egui::MenuBar::new().ui(ui, |ui| {
                 ui.menu_button("File", |ui| {
-                    if ui.button("New project").clicked() {
+                    if ui.add(egui::Button::new("New project").shortcut_text(NEW_SHORTCUT)).clicked() {
                         self.push_undo();
                         self.tiles = vec![[0u8; 64]; MAX_TILES];
                         self.modified = vec![false; MAX_TILES];
@@ -424,11 +465,12 @@ impl eframe::App for DMGTile {
                         self.current_path = None;
                         ui.close();
                     }
-                    if ui.button("Open...").clicked() {
+                    ui.separator();
+                    if ui.add(egui::Button::new("Open...").shortcut_text(OPEN_SHORTCUT)).clicked() {
                         self.open_dialog();
                         ui.close();
                     }
-                    if ui.button("Save").clicked() {
+                    if ui.add(egui::Button::new("Save").shortcut_text(SAVE_SHORTCUT)).clicked() {
                         self.save();
                         ui.close();
                     }
@@ -440,13 +482,20 @@ impl eframe::App for DMGTile {
                         self.export_window.open();
                         ui.close();
                     }
+
+                    ui.separator();
+
+                    if ui.add(egui::Button::new("Exit").shortcut_text(EXIT_SHORTCUT)).clicked() {
+                        ui.ctx().send_viewport_cmd(egui::ViewportCommand::Close);
+                        ui.close();
+                    }
                 });
                 ui.menu_button("Edit", |ui| {
-                    if ui.button("Undo").clicked() {
+                    if ui.add(egui::Button::new("Undo").shortcut_text(UNDO_SHORTCUT)).clicked() {
                         self.undo();
                         ui.close();
                     }
-                    if ui.button("Redo").clicked() {
+                    if ui.add(egui::Button::new("Redo").shortcut_text(REDO_SHORTCUT)).clicked() {
                         self.redo();
                         ui.close();
                     }
