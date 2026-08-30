@@ -6,6 +6,7 @@
 
 - [x] Drag on fill/bucket
 - [ ] Make a new window for save as with .dmgtile or .json
-- [ ] Make a export as... window
+- [x] Make a export as... window
+- [ ] Add CMD+S / CTRL+S to save (if no file with the same name exist do Save As..)
 - [x] Undo button
 - [x] Redo button

@@ -46,6 +46,7 @@ struct DMGTile {
     undo_stack: Vec<[u8; 64]>,
     redo_stack: Vec<[u8; 64]>,
     stroke_in_progress: bool,
+    export_window: export::ExportWindow,
 }
 
 impl Default for DMGTile {
@@ -62,6 +63,7 @@ impl Default for DMGTile {
             undo_stack: Vec::new(),
             redo_stack: Vec::new(),
             stroke_in_progress: false,
+            export_window: export::ExportWindow::default(),
         }
     }
 }
@@ -257,32 +259,6 @@ impl DMGTile {
         self.dirty = true;
     }
 
-    fn export_bin_dialog(&self) {
-        if let Some(path) = rfd::FileDialog::new()
-            .set_file_name("tile.bin")
-            .add_filter("Gameboy Tile", &["bin"])
-            .save_file()
-        {
-            match export::export_to_bin(&self.pixels, &path) {
-                Ok(_) => println!("Successfully exported to {:?}", path),
-                Err(e) => println!("Failed to export tile : {}", e),
-            }
-        }
-    }
-
-    fn export_c_dialog(&self) {
-        if let Some(path) = rfd::FileDialog::new()
-            .set_file_name("tile.c")
-            .add_filter("Gameboy Tile", &["c"])
-            .save_file()
-        {
-            match export::export_to_c(&self.pixels, "TileLabel", &path) { // Change the name to an export window
-                Ok(_) => println!("Successfully exported to {:?}", path),
-                Err(e) => println!("Failed to export tile : {}", e),
-            }
-        }
-    }
-
     fn save_dialog(&self) {
         if let Some(path) = rfd::FileDialog::new()
             .set_file_name("tile.dmgtile")
@@ -352,6 +328,8 @@ impl eframe::App for DMGTile {
             self.redo();
         }
 
+        self.export_window.show(ui.ctx(), &self.pixels);
+
         egui::Panel::top("menu_bar").show(ui, |ui| {
             egui::MenuBar::new().ui(ui, |ui| {
                 ui.menu_button("File", |ui| {
@@ -363,12 +341,8 @@ impl eframe::App for DMGTile {
                         self.save_dialog();
                         ui.close();
                     }
-                    if ui.button("Export .bin...").clicked() {
-                        self.export_bin_dialog();
-                        ui.close();
-                    }
-                    if ui.button("Export .c...").clicked() {
-                        self.export_c_dialog();
+                    if ui.button("Export As...").clicked() {
+                        self.export_window.open();
                         ui.close();
                     }
                 });

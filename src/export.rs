@@ -1,6 +1,104 @@
+use eframe::egui;
 use std::fs::File;
 use std::io::{self, Write};
 use std::path::Path;
+
+#[derive(PartialEq, Clone, Copy)]
+pub enum ExportFormat {
+    Bin,
+    C,
+}
+
+pub struct ExportWindow {
+    pub open: bool,
+    file_name: String,
+    label_name: String,
+    format: ExportFormat,
+}
+
+impl Default for ExportWindow {
+    fn default() -> Self {
+        Self {
+            open: false,
+            file_name: "tile".to_string(),
+            label_name: "TileLabel".to_string(),
+            format: ExportFormat::Bin,
+        }
+    }
+}
+
+impl ExportWindow {
+    pub fn open(&mut self) {
+        self.open = true;
+    }
+
+    pub fn show(&mut self, ctx: &egui::Context, pixels: &[u8; 64]) {
+        let mut still_open = self.open;
+
+        egui::Window::new("Export As...")
+            .open(&mut still_open)
+            .resizable(false)
+            .collapsible(false)
+            .default_pos(ctx.input(|i| i.viewport_rect()).center())
+            .pivot(egui::Align2::CENTER_CENTER)
+            .show(ctx, |ui| {
+                ui.horizontal(|ui| {
+                    ui.label("File name:");
+                    ui.text_edit_singleline(&mut self.file_name);
+                });
+
+                ui.horizontal(|ui| {
+                    ui.label("Format:");
+                    egui::ComboBox::from_id_salt("export_format")
+                        .selected_text(match self.format {
+                            ExportFormat::Bin => ".bin",
+                            ExportFormat::C => ".c",
+                        })
+                        .show_ui(ui, |ui| {
+                            ui.selectable_value(&mut self.format, ExportFormat::Bin, ".bin");
+                            ui.selectable_value(&mut self.format, ExportFormat::C, ".c");
+                        });
+                });
+
+                if self.format == ExportFormat::C {
+                    ui.horizontal(|ui| {
+                        ui.label("Array name:");
+                        ui.text_edit_singleline(&mut self.label_name);
+                    });
+                }
+
+                ui.separator();
+
+                if ui.button("Export").clicked() {
+                    self.do_export(pixels);
+                    self.open = false;
+                }
+            });
+        self.open = self.open && still_open;
+    }
+
+    fn do_export(&self, pixels: &[u8; 64]) {
+        let (default_name, ext): (String, &[&str]) = match self.format {
+            ExportFormat::Bin => (format!("{}.bin", self.file_name), &["bin"]),
+            ExportFormat::C => (format!("{}.c", self.file_name), &["c"]),
+        };
+
+        if let Some(path) = rfd::FileDialog::new()
+            .set_file_name(&default_name)
+            .add_filter("Gameboy Tile", ext)
+            .save_file()
+        {
+            let result = match self.format {
+                ExportFormat::Bin => export_to_bin(pixels, &path),
+                ExportFormat::C => export_to_c(pixels, &self.label_name, &path),
+            };
+            match result {
+                Ok(_) => println!("Successfully exported to {:?}", path),
+                Err(e) => println!("Failed to export tile : {}", e),
+            }
+        }
+    }
+}
 
 pub fn pixels_to_2bpp(pixels: &[u8; 64]) -> [u8; 16] {
     let mut result_bytes = [0u8; 16];
