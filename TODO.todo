@@ -5,4 +5,7 @@
     - [x] Right
 
 - [x] Drag on fill/bucket
-- [ ] Undo button
+- [ ] Make a new window for save as with .dmgtile or .json
+- [ ] Make a export as... window
+- [x] Undo button
+- [x] Redo button

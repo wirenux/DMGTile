@@ -43,6 +43,9 @@ struct DMGTile {
     right_shade: u8,
     tool: Tool,
     palette: Palette,
+    undo_stack: Vec<[u8; 64]>,
+    redo_stack: Vec<[u8; 64]>,
+    stroke_in_progress: bool,
 }
 
 impl Default for DMGTile {
@@ -56,6 +59,9 @@ impl Default for DMGTile {
             right_shade: 0,
             tool: Tool::Draw,
             palette: Palette::ClassicGreen,
+            undo_stack: Vec::new(),
+            redo_stack: Vec::new(),
+            stroke_in_progress: false,
         }
     }
 }
@@ -305,10 +311,47 @@ impl DMGTile {
             }
         }
     }
+
+    fn push_undo(&mut self) {
+        self.undo_stack.push(self.pixels);
+        self.redo_stack.clear();
+    }
+
+    fn undo(&mut self) {
+        if let Some(prev) = self.undo_stack.pop() {
+            self.redo_stack.push(self.pixels);
+            self.pixels = prev;
+            self.dirty = true;
+        }
+    }
+
+    fn redo(&mut self) {
+        if let Some(next) = self.redo_stack.pop() {
+            self.undo_stack.push(self.pixels);
+            self.pixels = next;
+            self.dirty = true;
+        }
+    }
 }
 
 impl eframe::App for DMGTile {
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
+        let (undo_press, redo_pressed) = ui.ctx().input(|i| {
+            let cmd = i.modifiers.command;
+            (
+                cmd && !i.modifiers.shift && i.key_pressed(egui::Key::Z),
+                cmd && i.modifiers.shift && i.key_pressed(egui::Key::Z),
+            )
+        });
+
+        if undo_press {
+            self.undo();
+        }
+
+        if redo_pressed {
+            self.redo();
+        }
+
         egui::Panel::top("menu_bar").show(ui, |ui| {
             egui::MenuBar::new().ui(ui, |ui| {
                 ui.menu_button("File", |ui| {
@@ -326,6 +369,16 @@ impl eframe::App for DMGTile {
                     }
                     if ui.button("Export .c...").clicked() {
                         self.export_c_dialog();
+                        ui.close();
+                    }
+                });
+                ui.menu_button("Edit", |ui| {
+                    if ui.button("Undo").clicked() {
+                        self.undo();
+                        ui.close();
+                    }
+                    if ui.button("Redo").clicked() {
+                        self.redo();
                         ui.close();
                     }
                 });
@@ -382,6 +435,7 @@ impl eframe::App for DMGTile {
                                 .fit_to_exact_size(egui::vec2(32.0, 32.0)),
                             )
                         ).clicked() {
+                            self.push_undo();
                             Self::shift_up(self);
                         }
 
@@ -392,6 +446,7 @@ impl eframe::App for DMGTile {
                                 .fit_to_exact_size(egui::vec2(32.0, 32.0)),
                             )
                         ).clicked() {
+                            self.push_undo();
                             Self::shift_left(self);
                         }
 
@@ -402,6 +457,7 @@ impl eframe::App for DMGTile {
                                 .fit_to_exact_size(egui::vec2(32.0, 32.0)),
                             )
                         ).clicked() {
+                            self.push_undo();
                             Self::shift_right(self);
                         }
 
@@ -412,6 +468,7 @@ impl eframe::App for DMGTile {
                                 .fit_to_exact_size(egui::vec2(32.0, 32.0)),
                             )
                         ).clicked() {
+                            self.push_undo();
                             Self::shift_down(self);
                         }
 
@@ -422,6 +479,7 @@ impl eframe::App for DMGTile {
                                 .fit_to_exact_size(egui::vec2(32.0, 32.0)),
                             )
                         ).clicked() {
+                            self.push_undo();
                             Self::flip_horizontally(self);
                         }
 
@@ -432,6 +490,7 @@ impl eframe::App for DMGTile {
                                 .fit_to_exact_size(egui::vec2(32.0, 32.0)),
                             )
                         ).clicked() {
+                            self.push_undo();
                             Self::flip_vertically(self);
                         }
 
@@ -442,6 +501,7 @@ impl eframe::App for DMGTile {
                                 .fit_to_exact_size(egui::vec2(32.0, 32.0)),
                             )
                         ).clicked() {
+                            self.push_undo();
                             Self::rotate_90_clockwise(self);
                         }
                     });
@@ -481,6 +541,11 @@ impl eframe::App for DMGTile {
                     if (response.clicked() || response.dragged() || response.secondary_clicked())
                         && let Some(pointer_pos) = response.interact_pointer_pos()
                     {
+                        if !self.stroke_in_progress {
+                            self.push_undo();
+                            self.stroke_in_progress = true;
+                        }
+
                         let shade = if ui.input(|i| i.pointer.secondary_down()) || response.secondary_clicked() {
                             self.right_shade
                         } else {
@@ -504,6 +569,7 @@ impl eframe::App for DMGTile {
                         }
                     } else {
                         self.previous_pixels = None;
+                        self.stroke_in_progress = false;
                     }
                     ui.horizontal(|ui| {
                         ui.label("L");
