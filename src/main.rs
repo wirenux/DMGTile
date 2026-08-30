@@ -391,7 +391,7 @@ impl eframe::App for DMGTile {
         egui::Panel::top("menu_bar").show(ui, |ui| {
             egui::MenuBar::new().ui(ui, |ui| {
                 ui.menu_button("File", |ui| {
-                    if ui.button("New file").clicked() {
+                    if ui.button("New project").clicked() {
                         self.push_undo();
                         self.tiles = vec![[0u8; 64]; MAX_TILES];
                         self.modified = vec![false; MAX_TILES];
