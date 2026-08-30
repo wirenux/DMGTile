@@ -596,6 +596,24 @@ impl eframe::App for DMGTile {
                         ui.close();
                     }
                 });
+                ui.menu_button("Help", |ui| {
+                    if ui.button("Manual").clicked() { // TODO: change for the real URL
+                        ui.ctx().open_url(egui::OpenUrl::new_tab("https://wirenux.com"));
+                        ui.close();
+                    }
+
+                    ui.separator();
+
+                    if ui.button("GitHub").clicked() {
+                        ui.ctx().open_url(egui::OpenUrl::new_tab("https://github.com/wirenux/DMGTile"));
+                        ui.close();
+                    }
+
+                    if ui.button("Stardance").clicked() {
+                        ui.ctx().open_url(egui::OpenUrl::new_tab("https://stardance.hackclub.com/projects/54773"));
+                        ui.close();
+                    }
+                });
                 ui.menu_button("Dev", |ui| {
                     if ui.button("Print self.pixels[]").clicked() {
                         println!("{:?}", self.tiles[self.current_tile]);
