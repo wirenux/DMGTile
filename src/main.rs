@@ -50,17 +50,17 @@ const CUT_SHORTCUT: &str = "Ctrl+X";
 const PASTE_SHORTCUT: &str = "Ctrl+V";
 
 fn main() -> eframe::Result {
-    #[cfg(target_os = "windows")]
-    unsafe {
-        std::env::set_var("WGPU_BACKEND", "dx12");
-    }
-
-    let options = eframe::NativeOptions {
+    let mut options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
             .with_inner_size([530.0, 380.0])
             .with_min_inner_size([530.0, 380.0]),
         ..Default::default()
     };
+
+    #[cfg(target_os = "windows")]
+    if let eframe::egui_wgpu::WgpuSetup::CreateNew(setup) = &mut options.wgpu_options.wgpu_setup {
+        setup.instance_descriptor.backends = eframe::wgpu::Backends::DX12 | eframe::wgpu::Backends::GL;
+    }
     eframe::run_native(
         "DMGTile",
         options,
