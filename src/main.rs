@@ -333,6 +333,12 @@ impl eframe::App for DMGTile {
         egui::Panel::top("menu_bar").show(ui, |ui| {
             egui::MenuBar::new().ui(ui, |ui| {
                 ui.menu_button("File", |ui| {
+                    if ui.button("New").clicked() {
+                        self.push_undo();
+                        self.pixels = [0u8; 64];
+                        self.dirty = true;
+                        ui.close();
+                    }
                     if ui.button("Open...").clicked() {
                         self.open_dialog();
                         ui.close();
