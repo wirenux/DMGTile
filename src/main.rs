@@ -390,6 +390,7 @@ impl eframe::App for DMGTile {
                 })
             });
         });
+
         egui::CentralPanel::default().show(ui, |ui| {
             if self.dirty {
                 self.rebuild_texture(ui.ctx());
