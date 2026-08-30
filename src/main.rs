@@ -608,7 +608,7 @@ impl eframe::App for DMGTile {
                             .fit_to_exact_size(egui::vec2(32.0, 32.0)),
                     )
                     .selected(pen_selected),
-                ).clicked() {
+                ).on_hover_text("Pen - B").clicked() {
                     self.tool = Tool::Draw;
                 }
 
@@ -620,25 +620,25 @@ impl eframe::App for DMGTile {
                             .fit_to_exact_size(egui::vec2(32.0, 32.0)),
                     )
                     .selected(bucket_selected),
-                ).clicked() {
+                ).on_hover_text("Bucket - G").clicked() {
                     self.tool = Tool::Bucket;
                 }
 
                 ui.separator();
 
-                if ui.add(egui::Button::image(egui::Image::new(egui::include_image!("../assets/aseprite/up.png")).texture_options(egui::TextureOptions::NEAREST).fit_to_exact_size(egui::vec2(32.0, 32.0)))).clicked() {
+                if ui.add(egui::Button::image(egui::Image::new(egui::include_image!("../assets/aseprite/up.png")).texture_options(egui::TextureOptions::NEAREST).fit_to_exact_size(egui::vec2(32.0, 32.0)))).on_hover_text("Shift Up - Up Arrow").clicked() {
                     self.push_undo();
                     self.shift_up();
                 }
-                if ui.add(egui::Button::image(egui::Image::new(egui::include_image!("../assets/aseprite/left.png")).texture_options(egui::TextureOptions::NEAREST).fit_to_exact_size(egui::vec2(32.0, 32.0)))).clicked() {
+                if ui.add(egui::Button::image(egui::Image::new(egui::include_image!("../assets/aseprite/left.png")).texture_options(egui::TextureOptions::NEAREST).fit_to_exact_size(egui::vec2(32.0, 32.0)))).on_hover_text("Shift Left - Left Arrow").clicked() {
                     self.push_undo();
                     self.shift_left();
                 }
-                if ui.add(egui::Button::image(egui::Image::new(egui::include_image!("../assets/aseprite/right.png")).texture_options(egui::TextureOptions::NEAREST).fit_to_exact_size(egui::vec2(32.0, 32.0)))).clicked() {
+                if ui.add(egui::Button::image(egui::Image::new(egui::include_image!("../assets/aseprite/right.png")).texture_options(egui::TextureOptions::NEAREST).fit_to_exact_size(egui::vec2(32.0, 32.0)))).on_hover_text("Shift Right - Right Arrow").clicked() {
                     self.push_undo();
                     self.shift_right();
                 }
-                if ui.add(egui::Button::image(egui::Image::new(egui::include_image!("../assets/aseprite/down.png")).texture_options(egui::TextureOptions::NEAREST).fit_to_exact_size(egui::vec2(32.0, 32.0)))).clicked() {
+                if ui.add(egui::Button::image(egui::Image::new(egui::include_image!("../assets/aseprite/down.png")).texture_options(egui::TextureOptions::NEAREST).fit_to_exact_size(egui::vec2(32.0, 32.0)))).on_hover_text("Shift Down - Down Arrow").clicked() {
                     self.push_undo();
                     self.shift_down();
                 }
@@ -653,7 +653,7 @@ impl eframe::App for DMGTile {
                     self.push_undo();
                     self.flip_vertically();
                 }
-                if ui.add(egui::Button::image(egui::Image::new(egui::include_image!("../assets/aseprite/rotate.png")).texture_options(egui::TextureOptions::NEAREST).fit_to_exact_size(egui::vec2(32.0, 32.0)))).clicked() {
+                if ui.add(egui::Button::image(egui::Image::new(egui::include_image!("../assets/aseprite/rotate.png")).texture_options(egui::TextureOptions::NEAREST).fit_to_exact_size(egui::vec2(32.0, 32.0)))).on_hover_text("Rotate 90º - R").clicked() {
                     self.push_undo();
                     self.rotate_90_clockwise();
                 }
