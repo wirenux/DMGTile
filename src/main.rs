@@ -23,6 +23,12 @@ const SAVE_SHORTCUT: &str = "⌘+S";
 const EXIT_SHORTCUT: &str = "⌘+Q";
 #[cfg(target_os = "macos")]
 const UNDO_SHORTCUT: &str = "⌘+Z";
+#[cfg(target_os = "macos")]
+const COPY_SHORTCUT: &str = "⌘+C";
+#[cfg(target_os = "macos")]
+const CUT_SHORTCUT: &str = "⌘+X";
+#[cfg(target_os = "macos")]
+const PASTE_SHORTCUT: &str = "⌘+V";
 
 #[cfg(not(target_os = "macos"))]
 const NEW_SHORTCUT: &str = "Ctrl+N";
@@ -36,6 +42,12 @@ const SAVE_SHORTCUT: &str = "Ctrl+S";
 const EXIT_SHORTCUT: &str = "Alt+F4";
 #[cfg(not(target_os = "macos"))]
 const UNDO_SHORTCUT: &str = "Ctrl+Z";
+#[cfg(not(target_os = "macos"))]
+const COPY_SHORTCUT: &str = "Ctrl+C";
+#[cfg(not(target_os = "macos"))]
+const CUT_SHORTCUT: &str = "Ctrl+X";
+#[cfg(not(target_os = "macos"))]
+const PASTE_SHORTCUT: &str = "Ctrl+V";
 
 fn main() -> eframe::Result {
     let options = eframe::NativeOptions {
@@ -52,6 +64,12 @@ fn main() -> eframe::Result {
             Ok(Box::<DMGTile>::default())
         })
     )
+}
+
+pub enum Event {
+    Copy,
+    Cut,
+    Paste(String),
 }
 
 enum Tool {
@@ -87,6 +105,7 @@ struct DMGTile {
     thumbnails: Vec<Option<egui::TextureHandle>>,
     modified: Vec<bool>,
     current_path: Option<PathBuf>,
+    clipboard: Option<[u8; 64]>,
 }
 
 impl Default for DMGTile {
@@ -108,6 +127,7 @@ impl Default for DMGTile {
             thumbnails: vec![None; MAX_TILES],
             modified: vec![false; MAX_TILES],
             current_path: None,
+            clipboard: None,
         }
     }
 }
@@ -411,6 +431,29 @@ impl DMGTile {
 
         self.thumbnails[idx].as_ref().unwrap().clone()
     }
+
+    fn copy_tile(&mut self) {
+        self.clipboard = Some(self.tiles[self.current_tile]);
+    }
+
+    fn cut_tile(&mut self) {
+        self.copy_tile();
+        self.push_undo();
+        self.tiles[self.current_tile] = [0u8; 64];
+        self.modified[self.current_tile] = false;
+        self.dirty = true;
+        self.thumbnails[self.current_tile] = None;
+    }
+
+    fn paste_tile(&mut self) {
+        if let Some(data) = self.clipboard {
+            self.push_undo();
+            self.tiles[self.current_tile] = data;
+            self.modified[self.current_tile] = true;
+            self.dirty = true;
+            self.thumbnails[self.current_tile] = None;
+        }
+    }
 }
 
 impl eframe::App for DMGTile {
@@ -426,21 +469,22 @@ impl eframe::App for DMGTile {
             )
         });
 
-        if undo_press {
-            self.undo();
-        }
+        let (copy_pressed, cut_pressed, paste_pressed) = ui.ctx().input(|i| {
+            (
+                i.events.iter().any(|e| matches!(e, egui::Event::Copy)),
+                i.events.iter().any(|e| matches!(e, egui::Event::Cut)),
+                i.events.iter().any(|e| matches!(e, egui::Event::Paste(_))),
+            )
+        });
 
-        if redo_pressed {
-            self.redo();
-        }
+        let editing_text = ui.ctx().egui_wants_keyboard_input();
 
-        if save_pressed {
-            self.save();
-        }
+        if undo_press { self.undo(); }
+        if redo_pressed { self.redo(); }
 
-        if open_pressed {
-            self.open_dialog();
-        }
+        if save_pressed { self.save(); }
+        if open_pressed { self.open_dialog(); }
+
 
         if new_pressed {
             self.push_undo();
@@ -450,6 +494,10 @@ impl eframe::App for DMGTile {
             self.thumbnails = vec![None; MAX_TILES];
             self.current_path = None;
         }
+
+        if copy_pressed && !editing_text { self.copy_tile(); }
+        if cut_pressed && !editing_text { self.cut_tile(); }
+        if paste_pressed && !editing_text { self.paste_tile(); }
 
         self.export_window.show(ui.ctx(), &self.tiles, &self.modified);
 
@@ -465,7 +513,9 @@ impl eframe::App for DMGTile {
                         self.current_path = None;
                         ui.close();
                     }
+
                     ui.separator();
+
                     if ui.add(egui::Button::new("Open...").shortcut_text(OPEN_SHORTCUT)).clicked() {
                         self.open_dialog();
                         ui.close();
@@ -497,6 +547,23 @@ impl eframe::App for DMGTile {
                     }
                     if ui.add(egui::Button::new("Redo").shortcut_text(REDO_SHORTCUT)).clicked() {
                         self.redo();
+                        ui.close();
+                    }
+
+                    ui.separator();
+
+                    if ui.add(egui::Button::new("Copy").shortcut_text(COPY_SHORTCUT)).clicked() {
+                        self.copy_tile();
+                        ui.close();
+                    }
+
+                    if ui.add(egui::Button::new("Cut").shortcut_text(CUT_SHORTCUT)).clicked() {
+                        self.cut_tile();
+                        ui.close();
+                    }
+
+                    if ui.add(egui::Button::new("Paste").shortcut_text(PASTE_SHORTCUT)).clicked() {
+                        self.paste_tile();
                         ui.close();
                     }
                 });
