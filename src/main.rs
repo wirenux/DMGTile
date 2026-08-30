@@ -1,6 +1,8 @@
 use eframe::egui;
 use egui::Color32;
 
+use std::path::PathBuf;
+
 mod export;
 mod project;
 
@@ -58,6 +60,7 @@ struct DMGTile {
     export_window: export::ExportWindow,
     thumbnails: Vec<Option<egui::TextureHandle>>,
     modified: Vec<bool>,
+    current_path: Option<PathBuf>,
 }
 
 impl Default for DMGTile {
@@ -78,6 +81,7 @@ impl Default for DMGTile {
             export_window: export::ExportWindow::default(),
             thumbnails: vec![None; MAX_TILES],
             modified: vec![false; MAX_TILES],
+            current_path: None,
         }
     }
 }
@@ -283,14 +287,28 @@ impl DMGTile {
         self.thumbnails[self.current_tile] = None;
     }
 
-    fn save_dialog(&self) {
+    fn save(&mut self) {
+        if let Some(path) = self.current_path.clone() {
+            match project::save_to_file(&self.tiles, &self.modified, &path) {
+                Ok(_) => println!("Successfully saved to {:?}", path),
+                Err(e) => println!("Failed to save project : {}", e),
+            }
+        } else {
+            self.save_dialog();
+        }
+    }
+
+    fn save_dialog(&mut self) {
         if let Some(path) = rfd::FileDialog::new()
             .set_file_name("tile.dmgtile")
             .add_filter("DMGTile project", &["dmgtile"])
             .save_file()
         {
             match project::save_to_file(&self.tiles, &self.modified, &path) {
-                Ok(_) => println!("Successfully saved to {:?}", path),
+                Ok(_) => {
+                    println!("Successfully saved to {:?}", path);
+                    self.current_path = Some(path);
+                }
                 Err(e) => println!("Failed to save project : {}", e),
             }
         }
@@ -308,6 +326,7 @@ impl DMGTile {
                     self.dirty = true;
                     self.thumbnails = vec![None; MAX_TILES];
                     println!("Successfully opened {:?}", path);
+                    self.current_path = Some(path);
                 }
                 Err(e) => println!("Failed to open project : {}", e),
             }
@@ -370,11 +389,12 @@ impl DMGTile {
 
 impl eframe::App for DMGTile {
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
-        let (undo_press, redo_pressed) = ui.ctx().input(|i| {
+        let (undo_press, redo_pressed, save_pressed) = ui.ctx().input(|i| {
             let cmd = i.modifiers.command;
             (
                 cmd && !i.modifiers.shift && i.key_pressed(egui::Key::Z),
                 cmd && i.modifiers.shift && i.key_pressed(egui::Key::Z),
+                cmd && i.key_pressed(egui::Key::S),
             )
         });
 
@@ -384,6 +404,10 @@ impl eframe::App for DMGTile {
 
         if redo_pressed {
             self.redo();
+        }
+
+        if save_pressed {
+            self.save();
         }
 
         self.export_window.show(ui.ctx(), &self.tiles, &self.modified);
@@ -401,6 +425,10 @@ impl eframe::App for DMGTile {
                     }
                     if ui.button("Open...").clicked() {
                         self.open_dialog();
+                        ui.close();
+                    }
+                    if ui.button("Save").clicked() {
+                        self.save();
                         ui.close();
                     }
                     if ui.button("Save As...").clicked() {
