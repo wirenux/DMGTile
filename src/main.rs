@@ -2,6 +2,7 @@ use eframe::egui;
 use egui::Color32;
 
 mod export;
+mod project;
 
 const CELL_SIZE: f32 = 32.0;
 const GRID_SIZE: usize = 8;
@@ -275,6 +276,35 @@ impl DMGTile {
             }
         }
     }
+
+    fn save_dialog(&self) {
+        if let Some(path) = rfd::FileDialog::new()
+            .set_file_name("tile.dmgtile")
+            .add_filter("DMGTile project", &["dmgtile"])
+            .save_file()
+        {
+            match project::save_to_file(&self.pixels, &path) {
+                Ok(_) => println!("Successfully saved to {:?}", path),
+                Err(e) => println!("Failed to save project : {}", e),
+            }
+        }
+    }
+
+    fn open_dialog(&mut self) {
+        if let Some(path) = rfd::FileDialog::new()
+            .add_filter("DMGTile project", &["dmgtile"])
+            .pick_file()
+        {
+            match project::load_from_file(&path) {
+                Ok(pixels) => {
+                    self.pixels = pixels;
+                    self.dirty = true; // force texture rebuild next frame
+                    println!("Successfully opened {:?}", path);
+                }
+                Err(e) => println!("Failed to open project : {}", e),
+            }
+        }
+    }
 }
 
 impl eframe::App for DMGTile {
@@ -282,6 +312,14 @@ impl eframe::App for DMGTile {
         egui::Panel::top("menu_bar").show(ui, |ui| {
             egui::MenuBar::new().ui(ui, |ui| {
                 ui.menu_button("File", |ui| {
+                    if ui.button("Open...").clicked() {
+                        self.open_dialog();
+                        ui.close();
+                    }
+                    if ui.button("Save As...").clicked() {
+                        self.save_dialog();
+                        ui.close();
+                    }
                     if ui.button("Export .bin...").clicked() {
                         self.export_bin_dialog();
                         ui.close();
@@ -531,6 +569,31 @@ impl eframe::App for DMGTile {
                             self.dirty = true;
                         }
                     });
+                });
+                ui.vertical(|ui| {
+                    let texture = self.texture.as_ref().unwrap();
+
+                    egui::Frame::default()
+                        .stroke(egui::Stroke::new(1.0, egui::Color32::from_gray(50)))
+                        .show(ui, |ui| {
+                            ui.add(egui::Image::new(texture).fit_to_exact_size(egui::vec2(32.0, 32.0)));
+                        });
+
+                    egui::Frame::default()
+                        .inner_margin(0.0)
+                        .show(ui, |ui| {
+                            ui.scope(|ui| {
+                                ui.spacing_mut().item_spacing = egui::vec2(0.0, 0.0);
+                                
+                                for _row in 0..4 {
+                                    ui.horizontal(|ui| {
+                                        for _col in 0..4 {
+                                            ui.add(egui::Image::new(texture).fit_to_exact_size(egui::vec2(32.0, 32.0)));
+                                        }
+                                    });
+                                }
+                            });
+                        });
                 });
             });
         });
