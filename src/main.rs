@@ -460,7 +460,7 @@ impl eframe::App for DMGTile {
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
         let (
                 undo_press, redo_pressed, save_pressed, new_pressed, open_pressed, brush_pressed, bucket_pressed,
-                left_pressed, right_pressed, up_pressed, down_pressed, rotate_pressed
+                left_pressed, right_pressed, up_pressed, down_pressed, rotate_pressed, pressed1, pressed2, pressed3, pressed4,
             ) = ui.ctx().input(|i| {
             let cmd = i.modifiers.command;
             (
@@ -476,6 +476,10 @@ impl eframe::App for DMGTile {
                 i.key_pressed(egui::Key::ArrowUp),
                 i.key_pressed(egui::Key::ArrowDown),
                 i.key_pressed(egui::Key::R),
+                i.key_pressed(egui::Key::Num1),
+                i.key_pressed(egui::Key::Num2),
+                i.key_pressed(egui::Key::Num3),
+                i.key_pressed(egui::Key::Num4),
             )
         });
 
@@ -518,6 +522,11 @@ impl eframe::App for DMGTile {
         if copy_pressed && !editing_text { self.copy_tile(); }
         if cut_pressed && !editing_text { self.cut_tile(); }
         if paste_pressed && !editing_text { self.paste_tile(); }
+
+        if pressed1 && !editing_text { self.current_shade = 0; }
+        if pressed2 && !editing_text { self.current_shade = 1; }
+        if pressed3 && !editing_text { self.current_shade = 2; }
+        if pressed4 && !editing_text { self.current_shade = 3; }
 
         self.export_window.show(ui.ctx(), &self.tiles, &self.modified);
 
