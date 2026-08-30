@@ -4,6 +4,8 @@ use egui::Color32;
 mod export;
 mod project;
 
+const MAX_TILES: usize = 128;
+
 const CELL_SIZE: f32 = 32.0;
 const GRID_SIZE: usize = 8;
 
@@ -34,8 +36,15 @@ enum Palette {
     ClassicGreen,
 }
 
+#[derive(Clone)]
+struct Snapshot {
+    tiles: Vec<[u8; 64]>,
+    modified: Vec<bool>,
+}
+
 struct DMGTile {
-    pub pixels: [u8; 64],
+    tiles: Vec<[u8; 64]>,
+    current_tile: usize,
     previous_pixels: Option<usize>,
     dirty: bool,
     texture: Option<egui::TextureHandle>,
@@ -43,16 +52,19 @@ struct DMGTile {
     right_shade: u8,
     tool: Tool,
     palette: Palette,
-    undo_stack: Vec<[u8; 64]>,
-    redo_stack: Vec<[u8; 64]>,
+    undo_stack: Vec<Snapshot>,
+    redo_stack: Vec<Snapshot>,
     stroke_in_progress: bool,
     export_window: export::ExportWindow,
+    thumbnails: Vec<Option<egui::TextureHandle>>,
+    modified: Vec<bool>,
 }
 
 impl Default for DMGTile {
     fn default() -> Self {
         Self {
-            pixels: [0; 64],
+            tiles: vec![[0u8; 64]; MAX_TILES],
+            current_tile: 0,
             previous_pixels: None,
             dirty: true, // force first-frame render
             texture: None,
@@ -64,6 +76,8 @@ impl Default for DMGTile {
             redo_stack: Vec::new(),
             stroke_in_progress: false,
             export_window: export::ExportWindow::default(),
+            thumbnails: vec![None; MAX_TILES],
+            modified: vec![false; MAX_TILES],
         }
     }
 }
@@ -95,7 +109,7 @@ impl DMGTile {
         for row in 0..GRID_SIZE {
             for col in 0..GRID_SIZE {
                 let index = row * GRID_SIZE + col;
-                let shade = self.pixels[index];
+                let shade = self.tiles[self.current_tile][index];
                 let color = Self::shade_color(shade, &self.palette);
                 image.pixels[index] = color;
             }
@@ -111,7 +125,7 @@ impl DMGTile {
     }
 
     fn bucket_fill(&mut self, start_index: usize, new_shade: u8) {
-        let target_shade = self.pixels[start_index];
+        let target_shade = self.tiles[self.current_tile][start_index];
 
         if target_shade == new_shade {
             return; // already the same shade
@@ -120,11 +134,11 @@ impl DMGTile {
         let mut stack = vec![start_index];
 
         while let Some(index) = stack.pop() {
-            if self.pixels[index] != target_shade {
+            if self.tiles[self.current_tile][index] != target_shade {
                 continue;
             }
 
-            self.pixels[index] = new_shade;
+            self.tiles[self.current_tile][index] = new_shade;
 
             let row = index / GRID_SIZE;
             let col = index % GRID_SIZE;
@@ -144,6 +158,7 @@ impl DMGTile {
         }
 
         self.dirty = true;
+        self.thumbnails[self.current_tile] = None;
     }
 
     fn draw(&mut self, origin: egui::Pos2, pointer_pos: egui::Pos2, color: u8) {
@@ -155,9 +170,11 @@ impl DMGTile {
             let index = row as usize * GRID_SIZE + col as usize;
 
             if self.previous_pixels != Some(index) {
-                self.pixels[index] = color;
+                self.tiles[self.current_tile][index] = color;
                 self.previous_pixels = Some(index);
                 self.dirty = true; // mark for texture rebuild next frame
+                self.thumbnails[self.current_tile] = None;
+                self.modified[self.current_tile] = true;
             }
         }
     }
@@ -168,12 +185,13 @@ impl DMGTile {
         for row in 0..GRID_SIZE {
             let source_row = (row + 1) % GRID_SIZE;
             for col in 0..GRID_SIZE {
-                new_pixels[row * GRID_SIZE + col] = self.pixels[source_row * GRID_SIZE + col];
+                new_pixels[row * GRID_SIZE + col] = self.tiles[self.current_tile][source_row * GRID_SIZE + col];
             }
         }
 
-        self.pixels = new_pixels;
+        self.tiles[self.current_tile] = new_pixels;
         self.dirty = true;
+        self.thumbnails[self.current_tile] = None;
     }
 
     fn shift_down(&mut self) {
@@ -182,12 +200,13 @@ impl DMGTile {
         for row in 0..GRID_SIZE {
             let source_row = (row + GRID_SIZE - 1) % GRID_SIZE;
             for col in 0..GRID_SIZE {
-                new_pixels[row * GRID_SIZE + col] = self.pixels[source_row * GRID_SIZE + col];
+                new_pixels[row * GRID_SIZE + col] = self.tiles[self.current_tile][source_row * GRID_SIZE + col];
             }
         }
 
-        self.pixels = new_pixels;
+        self.tiles[self.current_tile] = new_pixels;
         self.dirty = true;
+        self.thumbnails[self.current_tile] = None;
     }
 
     fn shift_left(&mut self) {
@@ -196,12 +215,13 @@ impl DMGTile {
         for row in 0..GRID_SIZE {
             for col in 0..GRID_SIZE {
                 let source_col = (col + 1) % GRID_SIZE;
-                new_pixels[row * GRID_SIZE + col] = self.pixels[row * GRID_SIZE + source_col];
+                new_pixels[row * GRID_SIZE + col] = self.tiles[self.current_tile][row * GRID_SIZE + source_col];
             }
         }
 
-        self.pixels = new_pixels;
+        self.tiles[self.current_tile] = new_pixels;
         self.dirty = true;
+        self.thumbnails[self.current_tile] = None;
     }
 
     fn shift_right(&mut self) {
@@ -210,12 +230,13 @@ impl DMGTile {
         for row in 0..GRID_SIZE {
             for col in 0..GRID_SIZE {
                 let source_col = (col + GRID_SIZE - 1) % GRID_SIZE;
-                new_pixels[row * GRID_SIZE + col] = self.pixels[row * GRID_SIZE + source_col];
+                new_pixels[row * GRID_SIZE + col] = self.tiles[self.current_tile][row * GRID_SIZE + source_col];
             }
         }
 
-        self.pixels = new_pixels;
+        self.tiles[self.current_tile] = new_pixels;
         self.dirty = true;
+        self.thumbnails[self.current_tile] = None;
     }
 
     fn flip_horizontally(&mut self) {
@@ -224,12 +245,13 @@ impl DMGTile {
         for row in 0..GRID_SIZE {
             let mirrored_row = GRID_SIZE - 1 - row;
             for col in 0..GRID_SIZE {
-                new_pixels[row * GRID_SIZE + col] = self.pixels[mirrored_row * GRID_SIZE + col];
+                new_pixels[row * GRID_SIZE + col] = self.tiles[self.current_tile][mirrored_row * GRID_SIZE + col];
             }
         }
 
-        self.pixels = new_pixels;
+        self.tiles[self.current_tile] = new_pixels;
         self.dirty = true;
+        self.thumbnails[self.current_tile] = None;
     }
 
     fn flip_vertically(&mut self) {
@@ -238,12 +260,13 @@ impl DMGTile {
         for row in 0..GRID_SIZE {
             for col in 0..GRID_SIZE {
                 let mirrored_col = GRID_SIZE - 1 - col;
-                new_pixels[row * GRID_SIZE + col] = self.pixels[row * GRID_SIZE + mirrored_col];
+                new_pixels[row * GRID_SIZE + col] = self.tiles[self.current_tile][row * GRID_SIZE + mirrored_col];
             }
         }
 
-        self.pixels = new_pixels;
+        self.tiles[self.current_tile] = new_pixels;
         self.dirty = true;
+        self.thumbnails[self.current_tile] = None;
     }
 
     fn rotate_90_clockwise(&mut self) {
@@ -251,12 +274,13 @@ impl DMGTile {
 
         for row in 0..GRID_SIZE {
             for col in 0..GRID_SIZE {
-                new_pixels[row * GRID_SIZE + col] = self.pixels[(GRID_SIZE - 1 - col) * GRID_SIZE + row];
+                new_pixels[row * GRID_SIZE + col] = self.tiles[self.current_tile][(GRID_SIZE - 1 - col) * GRID_SIZE + row];
             }
         }
 
-        self.pixels = new_pixels;
+        self.tiles[self.current_tile] = new_pixels;
         self.dirty = true;
+        self.thumbnails[self.current_tile] = None;
     }
 
     fn save_dialog(&self) {
@@ -265,7 +289,7 @@ impl DMGTile {
             .add_filter("DMGTile project", &["dmgtile"])
             .save_file()
         {
-            match project::save_to_file(&self.pixels, &path) {
+            match project::save_to_file(&self.tiles, &self.modified, &path) {
                 Ok(_) => println!("Successfully saved to {:?}", path),
                 Err(e) => println!("Failed to save project : {}", e),
             }
@@ -278,9 +302,11 @@ impl DMGTile {
             .pick_file()
         {
             match project::load_from_file(&path) {
-                Ok(pixels) => {
-                    self.pixels = pixels;
-                    self.dirty = true; // force texture rebuild next frame
+                Ok((tiles, modified)) => {
+                    self.tiles = tiles;
+                    self.modified = modified;
+                    self.dirty = true;
+                    self.thumbnails = vec![None; MAX_TILES];
                     println!("Successfully opened {:?}", path);
                 }
                 Err(e) => println!("Failed to open project : {}", e),
@@ -289,24 +315,56 @@ impl DMGTile {
     }
 
     fn push_undo(&mut self) {
-        self.undo_stack.push(self.pixels);
+        self.undo_stack.push(Snapshot {
+            tiles: self.tiles.clone(),
+            modified: self.modified.clone()
+        });
         self.redo_stack.clear();
     }
 
     fn undo(&mut self) {
         if let Some(prev) = self.undo_stack.pop() {
-            self.redo_stack.push(self.pixels);
-            self.pixels = prev;
+            self.redo_stack.push(Snapshot {
+                tiles: self.tiles.clone(),
+                modified: self.modified.clone(),
+            });
+            self.tiles = prev.tiles;
+            self.modified = prev.modified;
             self.dirty = true;
+            self.thumbnails = vec![None; MAX_TILES];
         }
     }
 
     fn redo(&mut self) {
         if let Some(next) = self.redo_stack.pop() {
-            self.undo_stack.push(self.pixels);
-            self.pixels = next;
+            self.undo_stack.push(Snapshot {
+                tiles: self.tiles.clone(),
+                modified: self.modified.clone(),
+            });
+            self.tiles = next.tiles;
+            self.modified = next.modified;
             self.dirty = true;
+            self.thumbnails = vec![None; MAX_TILES];
         }
+    }
+
+    fn thumbnails_for(&mut self, ctx: &egui::Context, idx: usize) -> egui::TextureHandle {
+        if self.thumbnails[idx].is_none() {
+            let mut image = egui::ColorImage::new(
+                [GRID_SIZE, GRID_SIZE],
+                vec![egui::Color32::BLACK; GRID_SIZE * GRID_SIZE],
+            );
+            for i in 0..GRID_SIZE * GRID_SIZE {
+                image.pixels[i] = Self::shade_color(self.tiles[idx][i], &self.palette)
+            }
+            self.thumbnails[idx] = Some(ctx.load_texture(
+                format!("thumb_{idx}"),
+                image,
+                egui::TextureOptions::NEAREST,
+            ));
+        }
+
+        self.thumbnails[idx].as_ref().unwrap().clone()
     }
 }
 
@@ -328,15 +386,17 @@ impl eframe::App for DMGTile {
             self.redo();
         }
 
-        self.export_window.show(ui.ctx(), &self.pixels);
+        self.export_window.show(ui.ctx(), &self.tiles, &self.modified);
 
         egui::Panel::top("menu_bar").show(ui, |ui| {
             egui::MenuBar::new().ui(ui, |ui| {
                 ui.menu_button("File", |ui| {
-                    if ui.button("New").clicked() {
+                    if ui.button("New file").clicked() {
                         self.push_undo();
-                        self.pixels = [0u8; 64];
+                        self.tiles = vec![[0u8; 64]; MAX_TILES];
+                        self.modified = vec![false; MAX_TILES];
                         self.dirty = true;
+                        self.thumbnails = vec![None; MAX_TILES];
                         ui.close();
                     }
                     if ui.button("Open...").clicked() {
@@ -364,7 +424,7 @@ impl eframe::App for DMGTile {
                 });
                 ui.menu_button("Dev", |ui| {
                     if ui.button("Print self.pixels[]").clicked() {
-                        println!("{:?}", self.pixels);
+                        println!("{:?}", self.tiles[self.current_tile]);
                         ui.close();
                     }
                 })
@@ -609,11 +669,13 @@ impl eframe::App for DMGTile {
                         if ui.button("Gray").clicked() {
                             self.palette = Palette::Grayscale;
                             self.dirty = true;
+                            self.thumbnails[self.current_tile] = None;
                         }
 
                         if ui.button("Green").clicked() {
                             self.palette = Palette::ClassicGreen;
                             self.dirty = true;
+                            self.thumbnails[self.current_tile] = None;
                         }
                     });
                 });
@@ -640,6 +702,34 @@ impl eframe::App for DMGTile {
                                     });
                                 }
                             });
+                        });
+                });
+                ui.vertical(|ui| {
+                    ui.set_width(70.0);
+                    egui::ScrollArea::vertical()
+                        .max_height(CELL_SIZE * GRID_SIZE as f32)
+                        .show(ui, |ui| {
+                            for idx in 0..self.tiles.len() {
+                                let selected = self.current_tile == idx;
+                                ui.horizontal(|ui| {
+                                    let label_response = ui.add(
+                                        egui::Button::selectable(selected, format!("{idx}")).min_size(egui::vec2(32.0, 18.0)),
+                                    );
+                                    
+                                    let thumb = self.thumbnails_for(ui.ctx(), idx);
+                                    let image_response = ui.add(
+                                        egui::Image::new(&thumb)
+                                            .fit_to_exact_size(egui::vec2(16.0, 16.0))
+                                            .sense(egui::Sense::click()),
+                                    );
+
+                                    if label_response.clicked() || image_response.clicked() {
+                                        self.current_tile = idx;
+                                        self.dirty = true;
+                                        self.thumbnails[self.current_tile] = None;
+                                    }
+                                });
+                            }
                         });
                 });
             });
