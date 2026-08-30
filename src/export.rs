@@ -35,7 +35,7 @@ impl ExportWindow {
     pub fn show(&mut self, ctx: &egui::Context, tiles: &[[u8; 64]], modified: &[bool]) {
         let mut still_open = self.open;
 
-        egui::Window::new("Export As...")
+        egui::Window::new("Export to...")
             .open(&mut still_open)
             .resizable(false)
             .collapsible(false)

@@ -478,7 +478,7 @@ impl eframe::App for DMGTile {
                         self.save_dialog();
                         ui.close();
                     }
-                    if ui.button("Export As...").clicked() {
+                    if ui.button("Export to...").clicked() {
                         self.export_window.open();
                         ui.close();
                     }
