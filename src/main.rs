@@ -458,7 +458,10 @@ impl DMGTile {
 
 impl eframe::App for DMGTile {
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
-        let (undo_press, redo_pressed, save_pressed, new_pressed, open_pressed) = ui.ctx().input(|i| {
+        let (
+                undo_press, redo_pressed, save_pressed, new_pressed, open_pressed, brush_pressed, bucket_pressed,
+                left_pressed, right_pressed, up_pressed, down_pressed, rotate_pressed
+            ) = ui.ctx().input(|i| {
             let cmd = i.modifiers.command;
             (
                 cmd && !i.modifiers.shift && i.key_pressed(egui::Key::Z),
@@ -466,6 +469,13 @@ impl eframe::App for DMGTile {
                 cmd && i.key_pressed(egui::Key::S),
                 cmd && i.key_pressed(egui::Key::N),
                 cmd && i.key_pressed(egui::Key::O),
+                i.key_pressed(egui::Key::B),
+                i.key_pressed(egui::Key::G),
+                i.key_pressed(egui::Key::ArrowLeft),
+                i.key_pressed(egui::Key::ArrowRight),
+                i.key_pressed(egui::Key::ArrowUp),
+                i.key_pressed(egui::Key::ArrowDown),
+                i.key_pressed(egui::Key::R),
             )
         });
 
@@ -494,6 +504,16 @@ impl eframe::App for DMGTile {
             self.thumbnails = vec![None; MAX_TILES];
             self.current_path = None;
         }
+
+        if brush_pressed && !editing_text{ self.tool = Tool::Draw; }
+        if bucket_pressed && !editing_text{ self.tool = Tool::Bucket; }
+        if rotate_pressed && !editing_text{ self.rotate_90_clockwise(); }
+
+        
+        if left_pressed && !editing_text { self.shift_left(); }
+        if right_pressed && !editing_text { self.shift_right(); }
+        if up_pressed && !editing_text { self.shift_up(); }
+        if down_pressed && !editing_text { self.shift_down(); }
 
         if copy_pressed && !editing_text { self.copy_tile(); }
         if cut_pressed && !editing_text { self.cut_tile(); }
