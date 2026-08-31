@@ -149,46 +149,9 @@ impl Default for DMGTile {
 }
 
 impl DMGTile {
-    fn shade_color(shade: u8, palette: &Palette) -> egui::Color32 {
-        match palette {
-            Palette::Grayscale => match shade {
-                0 => egui::Color32::from_hex("#ffffff").unwrap(),
-                1 => egui::Color32::from_hex("#aaaaaa").unwrap(),
-                2 => egui::Color32::from_hex("#555555").unwrap(),
-                _ => egui::Color32::from_hex("#000000").unwrap(),
-            },
-            Palette::ClassicGreen => match shade {
-                0 => egui::Color32::from_hex("#e0f8d0").unwrap(),
-                1 => egui::Color32::from_hex("#88c070").unwrap(),
-                2 => egui::Color32::from_hex("#346856").unwrap(),
-                _ => egui::Color32::from_hex("#081820").unwrap(),
-            },
-        }
-    }
-
-    fn rebuild_texture(&mut self, ctx: &egui::Context) {
-        let mut image = egui::ColorImage::new(
-            [GRID_SIZE, GRID_SIZE],
-            vec![egui::Color32::BLACK; GRID_SIZE * GRID_SIZE],
-        );
-
-        for row in 0..GRID_SIZE {
-            for col in 0..GRID_SIZE {
-                let index = row * GRID_SIZE + col;
-                let shade = self.tiles[self.current_tile][index];
-                let color = Self::shade_color(shade, &self.palette);
-                image.pixels[index] = color;
-            }
-        }
-
-        self.texture = Some(ctx.load_texture(
-            "tile_canvas", // name
-            image,
-            egui::TextureOptions::NEAREST,
-        ));
-
-        self.dirty = false;
-    }
+    // =============
+    //      Tool
+    // =============
 
     fn bucket_fill(&mut self, start_index: usize, new_shade: u8) {
         let target_shade = self.tiles[self.current_tile][start_index];
@@ -348,6 +311,48 @@ impl DMGTile {
         self.dirty = true;
         self.thumbnails[self.current_tile] = None;
     }
+
+    fn shade_color(shade: u8, palette: &Palette) -> egui::Color32 {
+        match palette {
+            Palette::Grayscale => match shade {
+                0 => egui::Color32::from_hex("#ffffff").unwrap(),
+                1 => egui::Color32::from_hex("#aaaaaa").unwrap(),
+                2 => egui::Color32::from_hex("#555555").unwrap(),
+                _ => egui::Color32::from_hex("#000000").unwrap(),
+            },
+            Palette::ClassicGreen => match shade {
+                0 => egui::Color32::from_hex("#e0f8d0").unwrap(),
+                1 => egui::Color32::from_hex("#88c070").unwrap(),
+                2 => egui::Color32::from_hex("#346856").unwrap(),
+                _ => egui::Color32::from_hex("#081820").unwrap(),
+            },
+        }
+    }
+
+    fn rebuild_texture(&mut self, ctx: &egui::Context) {
+        let mut image = egui::ColorImage::new(
+            [GRID_SIZE, GRID_SIZE],
+            vec![egui::Color32::BLACK; GRID_SIZE * GRID_SIZE],
+        );
+
+        for row in 0..GRID_SIZE {
+            for col in 0..GRID_SIZE {
+                let index = row * GRID_SIZE + col;
+                let shade = self.tiles[self.current_tile][index];
+                let color = Self::shade_color(shade, &self.palette);
+                image.pixels[index] = color;
+            }
+        }
+
+        self.texture = Some(ctx.load_texture(
+            "tile_canvas", // name
+            image,
+            egui::TextureOptions::NEAREST,
+        ));
+
+        self.dirty = false;
+    }
+
 
     fn save(&mut self) {
         if let Some(path) = self.current_path.clone() {
@@ -537,7 +542,6 @@ impl eframe::App for DMGTile {
         if bucket_pressed && !editing_text{ self.tool = Tool::Bucket; }
         if rotate_pressed && !editing_text{ self.rotate_90_clockwise(); }
 
-        
         if left_pressed && !editing_text { self.shift_left(); }
         if right_pressed && !editing_text { self.shift_right(); }
         if up_pressed && !editing_text { self.shift_up(); }
