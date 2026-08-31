@@ -11,3 +11,9 @@ serde = { version = "1.0.229", features = ["derive"] }
 serde_json = "1.0.151"
 egui_extras = { version = "0.36.1", features = ["image"] }
 image = { version = "0.25", features = ["png"] }
+winres = "0.1.12"
+
+[package.metadata.bundle]
+name = "DMGTile"
+identifier = "com.wirenux.dmgtile"
+icon = ["assets/macos/AppIcon.icns", "assets/default_512.png"]

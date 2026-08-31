@@ -3,10 +3,10 @@
 all: mac
 
 mac:
-	cargo build --release
+	cargo bundle --release
 
 mac-intel:
-	cargo build --release --target x86_64-apple-darwin
+	cargo bundle --release --target x86_64-apple-darwin
 
 windows:
 	RUSTFLAGS="-C target-feature=+crt-static" \

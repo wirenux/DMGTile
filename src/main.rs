@@ -51,11 +51,39 @@ const CUT_SHORTCUT: &str = "Ctrl+X";
 const PASTE_SHORTCUT: &str = "Ctrl+V";
 
 fn main() -> eframe::Result {
+    #[cfg(target_os = "macos")]
+    let icon_bytes = include_bytes!("../assets/macos/AppIcon1024.png");
+
+    #[cfg(not(target_os = "macos"))]
+    let icon_bytes = include_bytes!("../assets/default_512.png");
+
+    let icon_data = match image::load_from_memory(icon_bytes) {
+        Ok(img) => {
+            let rgba = img.into_rgba8();
+            let (width, height) = (rgba.width(), rgba.height());
+            Some(egui::IconData {
+                rgba: rgba.into_raw(),
+                width,
+                height,
+            })
+        }
+        Err(e) => {
+            eprintln!("Failed to load icon: {}", e);
+            None
+        }
+    };
+
+    let mut viewport = egui::ViewportBuilder::default()
+        .with_inner_size([530.0, 380.0])
+        .with_min_inner_size([530.0, 380.0]);
+
+    if let Some(icon) = icon_data {
+        viewport = viewport.with_icon(icon);
+    }
+
     #[allow(unused_mut)]
     let mut options = eframe::NativeOptions {
-        viewport: egui::ViewportBuilder::default()
-            .with_inner_size([530.0, 380.0])
-            .with_min_inner_size([530.0, 380.0]),
+        viewport,
         ..Default::default()
     };
 
@@ -63,6 +91,7 @@ fn main() -> eframe::Result {
     if let eframe::egui_wgpu::WgpuSetup::CreateNew(setup) = &mut options.wgpu_options.wgpu_setup {
         setup.instance_descriptor.backends = eframe::wgpu::Backends::DX12 | eframe::wgpu::Backends::GL;
     }
+
     eframe::run_native(
         "DMGTile",
         options,
