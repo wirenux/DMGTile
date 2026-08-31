@@ -23,3 +23,13 @@ We get the 2nd bit of B (which is `1`) then add it to the 2nd bit of A (`0`) to 
 
 
 So each row is 2 byte
+
+
+## Idea for logo :
+
+Maybe ? : https://www.reddit.com/r/rust/comments/b9mdll/comment/ek7mbm7/
+
+Ferrie on top of a gameboy
+
+64x64 pixel art
+
