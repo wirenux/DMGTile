@@ -96,7 +96,7 @@ impl ExportWindow {
             };
             match result {
                 Ok(_) => Some(Ok(format!("Successfully exported to {:?}", path))),
-                Err(e) => Some(Err(format!("Failed to export tile : {}", e))),
+                Err(e) => Some(Err(format!("Failed to export project : {}", e))),
             }
         } else {
             None
