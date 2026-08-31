@@ -2,6 +2,7 @@ use eframe::egui;
 use egui::Color32;
 
 use std::path::PathBuf;
+use std::time::Instant;
 
 mod export;
 mod project;
@@ -50,6 +51,7 @@ const CUT_SHORTCUT: &str = "Ctrl+X";
 const PASTE_SHORTCUT: &str = "Ctrl+V";
 
 fn main() -> eframe::Result {
+    #[allow(unused_mut)]
     let mut options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
             .with_inner_size([530.0, 380.0])
@@ -88,6 +90,12 @@ enum Palette {
     ClassicGreen,
 }
 
+struct Toast {
+    message: String,
+    is_error: bool,
+    spawn_time: Instant,
+}
+
 #[derive(Clone)]
 struct Snapshot {
     tiles: Vec<[u8; 64]>,
@@ -112,6 +120,7 @@ struct DMGTile {
     modified: Vec<bool>,
     current_path: Option<PathBuf>,
     clipboard: Option<[u8; 64]>,
+    toast: Option<Toast>,
 }
 
 impl Default for DMGTile {
@@ -134,6 +143,7 @@ impl Default for DMGTile {
             modified: vec![false; MAX_TILES],
             current_path: None,
             clipboard: None,
+            toast: None,
         }
     }
 }
@@ -342,8 +352,8 @@ impl DMGTile {
     fn save(&mut self) {
         if let Some(path) = self.current_path.clone() {
             match project::save_to_file(&self.tiles, &self.modified, &path) {
-                Ok(_) => println!("Successfully saved to {:?}", path),
-                Err(e) => println!("Failed to save project : {}", e),
+                Ok(_) => self.set_toast(format!("Saved to {:?}", path.file_name().unwrap_or_default()), false),
+                Err(e) => self.set_toast(format!("Failed to save project : {}", e), true),
             }
         } else {
             self.save_dialog();
@@ -358,10 +368,10 @@ impl DMGTile {
         {
             match project::save_to_file(&self.tiles, &self.modified, &path) {
                 Ok(_) => {
-                    println!("Successfully saved to {:?}", path);
+                    self.set_toast(format!("Successfully saved to {:?}", path), false);
                     self.current_path = Some(path);
                 }
-                Err(e) => println!("Failed to save project : {}", e),
+                Err(e) => self.set_toast(format!("Failed to save project : {}", e), true),
             }
         }
     }
@@ -460,6 +470,14 @@ impl DMGTile {
             self.thumbnails[self.current_tile] = None;
         }
     }
+
+    fn set_toast(&mut self, message: String, is_error: bool) {
+        self.toast = Some(Toast {
+            message,
+            is_error,
+            spawn_time: Instant::now()
+        });
+    }
 }
 
 impl eframe::App for DMGTile {
@@ -534,7 +552,12 @@ impl eframe::App for DMGTile {
         if pressed3 && !editing_text { self.current_shade = 2; }
         if pressed4 && !editing_text { self.current_shade = 3; }
 
-        self.export_window.show(ui.ctx(), &self.tiles, &self.modified);
+        if let Some(export_result) = self.export_window.show(ui.ctx(), &self.tiles, &self.modified) {
+            match export_result {
+                Ok(msg) => self.set_toast(msg, false),
+                Err(err) => self.set_toast(err, true),
+            }
+        }
 
         egui::Panel::top("menu_bar").show(ui, |ui| {
             egui::MenuBar::new().ui(ui, |ui| {
@@ -623,6 +646,17 @@ impl eframe::App for DMGTile {
                 ui.menu_button("Dev", |ui| {
                     if ui.button("Print self.pixels[]").clicked() {
                         println!("{:?}", self.tiles[self.current_tile]);
+                        ui.close();
+                    }
+
+                    ui.separator();
+
+                    if ui.button("Error toast").clicked() {
+                        self.set_toast("DEBUG: This is an error toast".to_string(), true);
+                        ui.close();
+                    }
+                    if ui.button("Success toast").clicked() {
+                        self.set_toast("DEBUG: This is a success toast".to_string(), false);
                         ui.close();
                     }
                 })
@@ -885,5 +919,30 @@ impl eframe::App for DMGTile {
                 });
             });
         });
+        if let Some(toast) = &self.toast {
+            if toast.spawn_time.elapsed().as_secs_f32() > 3.0 {
+                // Timer expired, destroy the toast
+                self.toast = None;
+            } else {
+                egui::Window::new("toast_notification")
+                    .title_bar(false)
+                    .resizable(false)
+                    .collapsible(false)
+                    .interactable(false) // Allows clicks to pass through to the canvas
+                    .anchor(egui::Align2::RIGHT_TOP, egui::vec2(-10.0, 30.0)) // 30px down to avoid the menu bar
+                    .show(ui.ctx(), |ui| {
+                        let color = if toast.is_error { 
+                            egui::Color32::LIGHT_RED 
+                        } else { 
+                            egui::Color32::LIGHT_GREEN 
+                        };
+                        ui.label(egui::RichText::new(&toast.message).color(color).strong());
+                    });
+
+                // Crucial: Tell egui to keep repainting the UI so the toast automatically 
+                // disappears after 3 seconds even if the user doesn't move their mouse.
+                ui.ctx().request_repaint_after(std::time::Duration::from_millis(100));
+            }
+        }
     }
 }

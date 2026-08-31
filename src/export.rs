@@ -32,8 +32,9 @@ impl ExportWindow {
         self.open = true;
     }
 
-    pub fn show(&mut self, ctx: &egui::Context, tiles: &[[u8; 64]], modified: &[bool]) {
+    pub fn show(&mut self, ctx: &egui::Context, tiles: &[[u8; 64]], modified: &[bool]) -> Option<Result<String, String>> {
         let mut still_open = self.open;
+        let mut export_status = None;
 
         egui::Window::new("Export to...")
             .open(&mut still_open)
@@ -70,14 +71,15 @@ impl ExportWindow {
                 ui.separator();
 
                 if ui.button("Export").clicked() {
-                    self.do_export(tiles, modified);
+                    export_status = self.do_export(tiles, modified);
                     self.open = false;
                 }
             });
         self.open = self.open && still_open;
+        export_status
     }
 
-    fn do_export(&self, tiles: &[[u8; 64]], modified: &[bool]) {
+    fn do_export(&self, tiles: &[[u8; 64]], modified: &[bool]) -> Option<Result<String, String>> {
         let (default_name, ext): (String, &[&str]) = match self.format {
             ExportFormat::Bin => (format!("{}.bin", self.file_name), &["bin"]),
             ExportFormat::C => (format!("{}.c", self.file_name), &["c"]),
@@ -93,9 +95,11 @@ impl ExportWindow {
                 ExportFormat::C => export_to_c(tiles, modified, &self.label_name, &path),
             };
             match result {
-                Ok(_) => println!("Successfully exported to {:?}", path),
-                Err(e) => println!("Failed to export tile : {}", e),
+                Ok(_) => Some(Ok(format!("Successfully exported to {:?}", path))),
+                Err(e) => Some(Err(format!("Failed to export tile : {}", e))),
             }
+        } else {
+            None
         }
     }
 }
