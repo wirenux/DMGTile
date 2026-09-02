@@ -137,6 +137,9 @@ make # this is the one for M-series mac
 
 This project is created by [@wirenux](https://github.com/wirenux) in [Rust](https://rust-lang.org/), using [egui](https://github.com/emilk/egui).
 
+
+Logo by [@wirenux](https://github.com/wirenux)
+
 ### License
 
 This project is released under the [MIT License](./LICENSE)
