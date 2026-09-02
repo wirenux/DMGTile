@@ -1,5 +1,5 @@
 <p align="center">
-    <img src="assets/aseprite/logo-background.png" width="256px" style="image-rendering: pixelated;" />
+    <img src="assets/logo-x16.png" width="256px" />
     <h1 align="center">DMGTile</h1>
 </p>
 
