@@ -22,12 +22,12 @@
 - [Core Features ( ദ്ദി ˙ᗜ˙ )](#core-features--ദ്ദി-ᗜ-)
   - [Editor](#editor)
   - [Project Management](#project-management)
-- [Export](#export)
+  - [Export](#export)
 - [Built with...](#built-with)
 - [Installation \& Quick Start](#installation--quick-start)
 - [Stardance Devlogs ᕙ( •̀ ᗜ •́ )ᕗ](#stardance-devlogs-ᕙ-̀-ᗜ-́-ᕗ)
-- [Developement](#developement)
-  - [Depedencies](#depedencies)
+- [Development](#development)
+  - [Dependencies](#dependencies)
   - [Building DMGTile from source](#building-dmgtile-from-source)
   - [Cross-compiling](#cross-compiling)
 - [Boring Stuff](#boring-stuff)
@@ -60,7 +60,7 @@ The idea for this project came from [GBTD (Gameboy Tile Designer)](https://www.d
 * **File Format**: Each project is saved in `.dmgtile` (JSON), storing only the modified tiles while preseving the tiles ID
 * **Keyboard Shortcut**: Full Cmd/Ctrl support for New Project, Open, Save, Undo, Redo, etc... Even the tools have there own shortcut
 
-## Export
+### Export
 
 * **`.bin` Export**: Exports all the modified tiles into the Gameboy's native 2bpp format
 * **`.c` Export**: Exports all the modified tiles as a C array, with configurable array name (Can be used with [GBDK](https://gbdk.org))
@@ -77,7 +77,7 @@ This project was built to help me learn Rust while creating a usefull Applicatio
 
 ## Installation & Quick Start
 
-The easiest way to download DMGTile is to go to the [Github Release]() and get the latest version `( ദ്ദി ˙ᗜ˙ )`. (Otherwise you can build the project from source on your own here: [Developement](#developement))
+The easiest way to download DMGTile is to go to the [Github Release](https://github.com/wirenux/DMGTile/releases) and get the latest version `( ദ്ദി ˙ᗜ˙ )`. (Otherwise you can build the project from source on your own here: [Developement](#developement))
 
 1. Launch DMGTile, use `File > New` (or `Cmd/Ctrl+N`) to start the project
 2. Select a tile from the tile list. And then paint !
@@ -89,12 +89,12 @@ The easiest way to download DMGTile is to go to the [Github Release]() and get t
 
 On [Stardance](https://stardance.hackclub.com/) you can watch the full development process via all the devlogs I've created here: [DMGTile Devlogs](https://stardance.hackclub.com/projects/54773)
 
-## Developement
+## Development
 
 > [!IMPORTANT]
 > You must have [Rust](https://rust-lang.org/) and [Cargo](https://doc.rust-lang.org/cargo/) installed on your computer
 
-### Depedencies
+### Dependencies
 
 * [`eframe` / `egui`](https://github.com/emilk/egui)
 * [`serde`](https://serde.rs/) / [`serde_json`](https://docs.rs/serde_json/)
