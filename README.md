@@ -151,7 +151,7 @@ make # this is the one for M-series mac
 
 ### Use of AI
 
-* Brainstorming + README.md idea
+* Brainstorming
 * Help with build method
 
 ### Credits
