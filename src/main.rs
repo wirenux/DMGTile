@@ -676,23 +676,25 @@ impl eframe::App for DMGTile {
                         ui.close();
                     }
                 });
-                ui.menu_button("Dev", |ui| {
-                    if ui.button("Print self.pixels[]").clicked() {
-                        println!("{:?}", self.tiles[self.current_tile]);
-                        ui.close();
-                    }
+                if std::env::args().any(|arg| arg == "--dev") {
+                    ui.menu_button("Dev", |ui| {
+                        if ui.button("Print self.pixels[]").clicked() {
+                            println!("{:?}", self.tiles[self.current_tile]);
+                            ui.close();
+                        }
 
-                    ui.separator();
+                        ui.separator();
 
-                    if ui.button("Error toast").clicked() {
-                        self.set_toast("DEBUG: This is an error toast".to_string(), true);
-                        ui.close();
-                    }
-                    if ui.button("Success toast").clicked() {
-                        self.set_toast("DEBUG: This is a success toast".to_string(), false);
-                        ui.close();
-                    }
-                })
+                        if ui.button("Error toast").clicked() {
+                            self.set_toast("DEBUG: This is an error toast".to_string(), true);
+                            ui.close();
+                        }
+                        if ui.button("Success toast").clicked() {
+                            self.set_toast("DEBUG: This is a success toast".to_string(), false);
+                            ui.close();
+                        }
+                    });
+                }
             });
         });
 
