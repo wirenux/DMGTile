@@ -3,6 +3,12 @@ use gpui::*;
 use std::borrow::Cow;
 use std::path::PathBuf;
 use std::time::Instant;
+use std::rc::Rc;
+
+#[path = "../components/mod.rs"]
+mod components;
+
+use components::gameboy_button;
 
 const MAX_TILES: usize = 128;
 
@@ -20,6 +26,7 @@ fn set_app_menus(cx: &mut App) {
                 MenuItem::separator(),
                 MenuItem::action("Quit", Quit),
             ],
+            disabled: false,
         },
         Menu {
             name: "File".into(),
@@ -28,6 +35,7 @@ fn set_app_menus(cx: &mut App) {
                 MenuItem::action("Open", OpenFile),
                 MenuItem::action("Save", Save),
             ],
+            disabled: false,
         },
         Menu {
             name: "Edit".into(),
@@ -35,10 +43,12 @@ fn set_app_menus(cx: &mut App) {
                 MenuItem::action("Undo", Undo),
                 MenuItem::action("Redo", Redo),
             ],
+            disabled: false,
         },
         Menu {
             name: "Help".into(),
             items: vec![MenuItem::action("About", ShowAbout)],
+            disabled: false,
         },
     ]);
 }
@@ -222,11 +232,11 @@ impl DMGTile {
                     .flex_row()
                     .items_center()
                     .gap_1()
-                    .child(div().text_color(rgb(0xffffff)).child("L"))
+                    .child(div().text_color(rgb(0x86C06C)).child("L"))
                     .child(
                         div()
                             .size(px(20.0))
-                            .pl(px(4.0)) // make the number centered with the Early GameBoy font
+                            .pt(px(2.0)) // make the number centered with the Pixter-Display font
                             .bg(shade_color)
                             .border_1()
                             .border_color(rgb(0x323232))
@@ -255,7 +265,7 @@ impl DMGTile {
                         div()
                             .id(("shade", s as usize))
                             .size(px(24.0))
-                            .pl(px(4.0)) // make the number centered with the Early GameBoy font
+                            .pt(px(2.0)) // make the number centered with the Pixter-Display font
                             .bg(color)
                             .border_1()
                             .border_color(if selected { rgb(0x3080ff) } else { rgb(0x323232) })
@@ -280,35 +290,16 @@ impl DMGTile {
                     .flex_row()
                     .gap_1()
                     .child(
-                        div()
-                            .id("palette-gray")
-                            .px_2()
-                            .py_1()
-                            .border_1()
-                            .border_color(rgb(0x323232))
-                            .text_color(rgb(0xffffff))
-                            .cursor_pointer()
-                            .on_mouse_down(MouseButton::Left, cx.listener(|this, _, _, cx| {
-                                this.palette = Palette::Grayscale;
-                                cx.notify();
-                            }))
-                            .child("Gray"),
+                        gameboy_button("btn-palette-gray", "Gray", cx, |this, _event, cx| {
+                            this.palette = Palette::Grayscale;
+                            cx.notify();
+                        })
                     )
                     .child(
-                        div()
-                            .id("palette-green")
-                            .px_2()
-                            .py_1()
-                            .border_1()
-                            .border_color(rgb(0x323232))
-                            .text_color(rgb(0xffffff))
-                            .cursor_pointer()
-                            .on_mouse_down(MouseButton::Left, cx.listener(|this, _, _, cx| {
-                                this.palette = Palette::ClassicGreen;
-                                cx.notify();
-                            }))
-                            .hover(|style| style.bg(rgb(0xffffff)))
-                            .child("Green"),
+                        gameboy_button("btn-palette-green", "Green", cx, |this, _event, cx| {
+                            this.palette = Palette::ClassicGreen;
+                            cx.notify();
+                        })
                     ),
             )
     }
@@ -321,8 +312,8 @@ impl Render for DMGTile {
             .size_full()
             .flex()
             .flex_col()
-            .font_family("Early GameBoy")
-            .bg(rgb(0x0d1221))
+            .font_family("Pixter-Display")
+            .bg(rgb(0x071821))
             .child(
                 div()
                     .track_focus(&self.focus_handle)
@@ -362,7 +353,7 @@ impl Render for DMGTile {
 
                                 div()
                                     .id(("pixel", index))
-                                    .size(px(CELL_SIZE))
+                                    .size(px(CELL_SIZE + 16.0))
                                     .bg(color)
                                     .border(px(0.5))
                                     .border_color(rgb(0x323232))
@@ -390,10 +381,10 @@ impl Render for DMGTile {
 }
 
 fn main() {
-    Application::new().run(|cx: &mut App| {
+    Application::with_platform(gpui_platform::current_platform(false)).run(|cx: &mut App| {
         cx.activate(true); // focus on the app
 
-        let font_bytes = include_bytes!("../../font/gb.ttf").to_vec(); // TODO: when release change
+        let font_bytes = include_bytes!("../../font/Pixter-Display.ttf").to_vec(); // TODO: when release change
                                                                        // path to the good one
 
         cx.text_system()
@@ -439,8 +430,8 @@ fn main() {
         .unwrap();
 
         window
-            .update(cx, |view, window, _cx| {
-                window.focus(&view.focus_handle);
+            .update(cx, |view, window, cx| {
+                window.focus(&view.focus_handle, cx);
             })
             .ok();
     });
