@@ -1,9 +1,9 @@
 use gpui::*;
+use gpui::prelude::FluentBuilder;
 
 use std::borrow::Cow;
 use std::path::PathBuf;
 use std::time::Instant;
-use std::rc::Rc;
 
 #[path = "../components/mod.rs"]
 mod components;
@@ -14,6 +14,8 @@ const MAX_TILES: usize = 128;
 
 const CELL_SIZE: f32 = 32.0;
 const GRID_SIZE: usize = 8;
+
+const PIXEL: f32 = 2.0;
 
 actions!(dmgtile, [Quit, NewFile, OpenFile, Save, Undo, Redo, ShowAbout, Eraser, Brush, Bucket]);
 
@@ -198,6 +200,18 @@ impl DMGTile {
         self.previous_pixels = None;
     }
 
+    fn corner_notch(color: Rgba, top: bool, left: bool) -> impl IntoElement {
+        div()
+            .absolute()
+            .w(px(PIXEL))
+            .h(px(PIXEL))
+            .bg(color)
+            .when(top, |s| s.top(px(0.)))
+            .when(!top, |s| s.bottom(px(0.)))
+            .when(left, |s| s.left(px(0.)))
+            .when(!left, |s| s.right(px(0.)))
+    }
+
     fn shade_color(shade: u8, palette: &Palette) -> Rgba {
         match palette {
             Palette::Grayscale => match shade {
@@ -252,7 +266,7 @@ impl DMGTile {
             )
             // Separator
             .child(div().w(px(1.0)).h(px(20.0)).bg(rgb(0x323232)))
-            // Shade selector (4 swatches)
+            // Shade selector
             .child(
                 div()
                     .flex()
@@ -261,14 +275,23 @@ impl DMGTile {
                         let color = Self::shade_color(s, &self.palette);
                         let selected = self.current_shade == s;
                         let text_color = if s <= 1 { rgb(0x000000) } else { rgb(0xffffff) };
+                        let behind_bg = rgb(0x1a1a1a);
+                        let border_color = if !selected {
+                            rgba(0x08171cff)
+                        } else if s < 1 {
+                            rgb(0x88C070)
+                        } else {
+                            rgb(0xE0F8D0)
+                        };
 
                         div()
                             .id(("shade", s as usize))
+                            .relative()
                             .size(px(24.0))
-                            .pt(px(2.0)) // make the number centered with the Pixter-Display font
+                            .pt(px(2.0))
                             .bg(color)
-                            .border_1()
-                            .border_color(if selected { rgb(0x3080ff) } else { rgb(0x323232) })
+                            .border_2()
+                            .border_color(border_color)
                             .flex()
                             .items_center()
                             .justify_center()
@@ -279,7 +302,13 @@ impl DMGTile {
                                 cx.notify();
                             }))
                             .child(div().text_color(text_color).child(s.to_string()))
-                    })),
+                            .when(!selected, |el| {
+                                el.child(Self::corner_notch(behind_bg, true, true))
+                                    .child(Self::corner_notch(behind_bg, true, false))
+                                    .child(Self::corner_notch(behind_bg, false, true))
+                                    .child(Self::corner_notch(behind_bg, false, false))
+                            })
+                    }))
             )
             // Separator
             .child(div().w(px(1.0)).h(px(20.0)).bg(rgb(0x323232)))
@@ -313,7 +342,7 @@ impl Render for DMGTile {
             .flex()
             .flex_col()
             .font_family("Pixter-Display")
-            .bg(rgb(0x071821))
+            .bg(rgb(0x08171c))
             .child(
                 div()
                     .track_focus(&self.focus_handle)
