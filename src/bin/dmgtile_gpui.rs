@@ -246,7 +246,7 @@ impl DMGTile {
                     .flex_row()
                     .items_center()
                     .gap_1()
-                    .child(div().text_color(rgb(0x86C06C)).child("L"))
+                    .child(div().text_color(rgb(0x86C06C)).child("L")) // TODO: Change letter
                     .child(
                         div()
                             .size(px(20.0))
