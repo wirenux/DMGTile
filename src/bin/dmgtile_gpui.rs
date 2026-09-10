@@ -250,10 +250,9 @@ impl DMGTile {
                     .child(
                         div()
                             .size(px(20.0))
+                            .relative()
                             .pt(px(2.0)) // make the number centered with the Pixter-Display font
                             .bg(shade_color)
-                            .border_1()
-                            .border_color(rgb(0x323232))
                             .flex()
                             .items_center()
                             .justify_center()
@@ -261,7 +260,11 @@ impl DMGTile {
                                 div()
                                     .text_color(if shade <= 1 { rgb(0x000000) } else { rgb(0xffffff) })
                                     .child(shade.to_string()),
-                            ),
+                            )
+                            .child(Self::corner_notch(rgb(0x1a1a1a), true, true))
+                            .child(Self::corner_notch(rgb(0x1a1a1a), true, false))
+                            .child(Self::corner_notch(rgb(0x1a1a1a), false, true))
+                            .child(Self::corner_notch(rgb(0x1a1a1a), false, false))
                     ),
             )
             // Separator
