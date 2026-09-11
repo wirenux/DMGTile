@@ -145,6 +145,7 @@ impl DMGTile {
     }
 
     fn bucket_fill(&mut self, start_index: usize, new_shade: u8) {
+        self.push_undo();
         let target_shade = self.tiles[self.current_tile][start_index];
 
         if target_shade == new_shade {
@@ -182,6 +183,7 @@ impl DMGTile {
 
     
     fn paint_pixel(&mut self, index: usize, shade: u8) {
+        self.push_undo();
         if self.tiles[self.current_tile][index] != shade {
             self.tiles[self.current_tile][index] = shade;
             self.modified[self.current_tile] = true;
@@ -190,7 +192,7 @@ impl DMGTile {
 
     fn start_stroke(&mut self) {
         if !self.stroke_in_progress {
-            // self.push_undo();
+            self.push_undo();
             self.stroke_in_progress = true;
         }
     }
@@ -335,6 +337,38 @@ impl DMGTile {
                     ),
             )
     }
+
+    fn push_undo(&mut self) {
+        self.undo_stack.push(Snapshot {
+            tiles: self.tiles.clone(),
+            modified: self.modified.clone()
+        });
+        self.redo_stack.clear();
+    }
+
+    fn undo(&mut self) {
+        if let Some(prev) = self.undo_stack.pop() {
+            self.redo_stack.push(Snapshot {
+                tiles: self.tiles.clone(),
+                modified: self.modified.clone(),
+            });
+            self.tiles = prev.tiles;
+            self.modified = prev.modified;
+            // self.thumbnails = vec![None; MAX_TILES];
+        }
+    }
+
+    fn redo(&mut self) {
+        if let Some(next) = self.redo_stack.pop() {
+            self.undo_stack.push(Snapshot {
+                tiles: self.tiles.clone(),
+                modified: self.modified.clone(),
+            });
+            self.tiles = next.tiles;
+            self.modified = next.modified;
+            // self.thumbnails = vec![None; MAX_TILES];
+        }
+    }
 }
 
 impl Render for DMGTile {
@@ -364,6 +398,14 @@ impl Render for DMGTile {
                     .on_action(cx.listener(|this, _: &Bucket, _, cx| {
                         this.tool = Tool::Bucket;
                         this.eraser_active = false;
+                        cx.notify();
+                    }))
+                    .on_action(cx.listener(|this, _: &Undo, _, cx| {
+                        this.undo();
+                        cx.notify();
+                    }))
+                    .on_action(cx.listener(|this, _: &Redo, _, cx| {
+                        this.redo();
                         cx.notify();
                     }))
                     .on_mouse_up(MouseButton::Left, cx.listener(|this, _, _, cx| {
@@ -415,9 +457,9 @@ impl Render for DMGTile {
 fn main() {
     Application::with_platform(gpui_platform::current_platform(false)).run(|cx: &mut App| {
         cx.activate(true); // focus on the app
+        cx.set_cursor_hide_mode(CursorHideMode::Never); // prevent mouse flicker when undo/redo
 
-        let font_bytes = include_bytes!("../../font/Pixter-Display.ttf").to_vec(); // TODO: when release change
-                                                                       // path to the good one
+        let font_bytes = include_bytes!("../../font/Pixter-Display.ttf").to_vec(); // TODO: when release change path to the good one
 
         cx.text_system()
             .add_fonts(vec![Cow::Owned(font_bytes)])
@@ -427,12 +469,12 @@ fn main() {
         cx.on_action(|_: &NewFile, _cx| { println!("New"); });
         cx.on_action(|_: &OpenFile, _cx| { println!("Open"); });
         cx.on_action(|_: &Save, _cx| { println!("Save"); });
-        cx.on_action(|_: &Undo, _cx| { println!("Undo"); });
-        cx.on_action(|_: &Redo, _cx| { println!("Redo"); });
         cx.on_action(|_: &ShowAbout, _cx| { println!("About"); });
 
         cx.bind_keys([
-            KeyBinding::new("cmd-q", Quit, None), // faster quit than using the traffic light
+            KeyBinding::new("cmd-q", Quit, Some("DMGTile")), // faster quit than using the traffic light
+            KeyBinding::new("cmd-z", Undo, Some("DMGTile")),
+            KeyBinding::new("cmd-shift-z", Redo, Some("DMGTile")),
             KeyBinding::new("e", Eraser, Some("DMGTile")),
             KeyBinding::new("b", Brush, Some("DMGTile")),
             KeyBinding::new("g", Bucket, Some("DMGTile")),
