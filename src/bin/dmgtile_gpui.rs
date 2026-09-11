@@ -66,6 +66,7 @@ enum Tool {
     Bucket,
 }
 
+#[derive(PartialEq, Eq)]
 enum Palette {
     Grayscale,
     ClassicGreen,
@@ -283,10 +284,14 @@ impl DMGTile {
                         let behind_bg = rgb(0x1a1a1a);
                         let border_color = if !selected {
                             rgba(0x08171cff)
-                        } else if s < 1 {
+                        } else if s < 1 && self.palette == Palette::ClassicGreen {
                             rgb(0x88C070)
-                        } else {
+                        } else if self.palette == Palette::ClassicGreen{
                             rgb(0xE0F8D0)
+                        } else if s < 1 && self.palette == Palette::Grayscale {
+                            rgb(0xAAAAAA)
+                        } else {
+                            rgb(0xFFFFFF)
                         };
 
                         div()
