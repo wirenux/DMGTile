@@ -282,16 +282,10 @@ impl DMGTile {
                         let selected = self.current_shade == s;
                         let text_color = if s <= 1 { rgb(0x000000) } else { rgb(0xffffff) };
                         let behind_bg = rgb(0x1a1a1a);
-                        let border_color = if !selected {
-                            rgba(0x08171cff)
-                        } else if s < 1 && self.palette == Palette::ClassicGreen {
-                            rgb(0x88C070)
-                        } else if self.palette == Palette::ClassicGreen{
-                            rgb(0xE0F8D0)
-                        } else if s < 1 && self.palette == Palette::Grayscale {
-                            rgb(0xAAAAAA)
+                        let border_color = if selected {
+                            Self::shade_color(if s < 1 { 1 } else { 0 }, &self.palette)
                         } else {
-                            rgb(0xFFFFFF)
+                            rgba(0x08171cff)
                         };
 
                         div()
