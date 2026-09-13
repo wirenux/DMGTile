@@ -11,3 +11,5 @@
 - [x] Undo button
 - [x] Redo button
 - [ ] Write a little manual
+
+- [ ] Add `features = ["wayland", "x11"]` to `gpui_platform` in `Cargo.toml`
