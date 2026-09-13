@@ -237,11 +237,11 @@ impl DMGTile {
         self.previous_pixels = None;
     }
 
-    fn corner_notch(color: Rgba, top: bool, left: bool) -> impl IntoElement {
+    fn corner_notch(color: Rgba, top: bool, left: bool, multiplicator: f32) -> impl IntoElement {
         div()
             .absolute()
-            .w(px(PIXEL))
-            .h(px(PIXEL))
+            .w(px(PIXEL * multiplicator))
+            .h(px(PIXEL * multiplicator))
             .bg(color)
             .when(top, |s| s.top(px(0.)))
             .when(!top, |s| s.bottom(px(0.)))
@@ -345,7 +345,7 @@ impl DMGTile {
                             .text_color(if selected { rgb(0xffffff) } else { rgb(0x88c070) })
                             .child(format!("{}", i))
                     )
-                    .child(img(image).w(thumb_size).h(thumb_size))
+                    .child(img(image).w(thumb_size * 2.0).h(thumb_size * 2.0))
             }))
     }
 
@@ -358,7 +358,7 @@ impl DMGTile {
             .flex_row()
             .items_center()
             .gap_2()
-            .p_1()
+            .pl_5()
             // Current shade indicator
             .child(
                 div()
@@ -381,10 +381,10 @@ impl DMGTile {
                                     .text_color(if shade <= 1 { rgb(0x000000) } else { rgb(0xffffff) })
                                     .child(shade.to_string()),
                             )
-                            .child(Self::corner_notch(rgb(0x1a1a1a), true, true))
-                            .child(Self::corner_notch(rgb(0x1a1a1a), true, false))
-                            .child(Self::corner_notch(rgb(0x1a1a1a), false, true))
-                            .child(Self::corner_notch(rgb(0x1a1a1a), false, false))
+                            .child(Self::corner_notch(rgb(0x1a1a1a), true, true, 1.0))
+                            .child(Self::corner_notch(rgb(0x1a1a1a), true, false, 1.0))
+                            .child(Self::corner_notch(rgb(0x1a1a1a), false, true, 1.0))
+                            .child(Self::corner_notch(rgb(0x1a1a1a), false, false, 1.0))
                     ),
             )
             // Separator
@@ -424,10 +424,10 @@ impl DMGTile {
                             }))
                             .child(div().text_color(text_color).child(s.to_string()))
                             .when(!selected, |el| {
-                                el.child(Self::corner_notch(behind_bg, true, true))
-                                    .child(Self::corner_notch(behind_bg, true, false))
-                                    .child(Self::corner_notch(behind_bg, false, true))
-                                    .child(Self::corner_notch(behind_bg, false, false))
+                                el.child(Self::corner_notch(behind_bg, true, true, 1.0))
+                                    .child(Self::corner_notch(behind_bg, true, false, 1.0))
+                                    .child(Self::corner_notch(behind_bg, false, true, 1.0))
+                                    .child(Self::corner_notch(behind_bg, false, false, 1.0))
                             })
                     }))
             )
@@ -494,7 +494,7 @@ impl DMGTile {
         );
 
         div()
-            .top(px(128.0))
+            // .top(px(128.0))
             .flex()
             .flex_col()
             .children((0..PATTERN_REPEAT).map(move |_| {
@@ -511,6 +511,8 @@ impl DMGTile {
     fn render_preview_panel(&mut self) -> impl IntoElement {
         let chunk_size = px(PATTERN_REPEAT as f32 * GRID_SIZE as f32 * PATTERN_PIXEL_SIZE);
         let preview_size = px(GRID_SIZE as f32 * PREVIEW_PIXEL_SIZE);
+        let bg_color = rgb(0x08171c);
+        let border_color = rgb(0x88C070);
 
         let preview_image = Self::get_or_build_tile_image(
             &mut self.preview_image_cache,
@@ -520,35 +522,54 @@ impl DMGTile {
         );
 
         div()
-            .p_2()
+            .pl(px(128.0))
+            .flex()
+            .flex_col()
+            .items_center()
+            .gap_4()
             .child(
                 div()
                     .relative()
-                    .w(chunk_size)
-                    .h(chunk_size)
-                    .child(self.render_pattern_chunk())
                     .child(
                         div()
-                            .absolute()
-                            .top(px(0.0))
-                            .left(px(48.0))
-                            .w(preview_size)
-                            .h(preview_size)
+                            .border_4()
+                            .border_color(border_color)
                             .child(img(preview_image).w(preview_size).h(preview_size)),
-                    ),
+                    )
+                    .child(Self::corner_notch(bg_color, true, true, 2.0))
+                    .child(Self::corner_notch(bg_color, true, false, 2.0))
+                    .child(Self::corner_notch(bg_color, false, true, 2.0))
+                    .child(Self::corner_notch(bg_color, false, false, 2.0)),
+            )
+            .child(
+                div()
+                    .relative()
+                    .child(
+                        div()
+                            .border_4()
+                            .border_color(border_color)
+                            .child(self.render_pattern_chunk()),
+                    )
+                    .child(Self::corner_notch(bg_color, true, true, 2.0))
+                    .child(Self::corner_notch(bg_color, true, false, 2.0))
+                    .child(Self::corner_notch(bg_color, false, true, 2.0))
+                    .child(Self::corner_notch(bg_color, false, false, 2.0)),
             )
     }
 }
 
 impl Render for DMGTile {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let bg_color = rgb(0x08171c);
+        let border_color = rgb(0x88C070);
+
         div()
             .key_context("DMGTile")
             .size_full()
             .flex()
             .flex_row()
             .font_family("Pixter-Display")
-            .bg(rgb(0x08171c))
+            .bg(bg_color)
             .child(
                 div()
                     .flex()
@@ -559,80 +580,94 @@ impl Render for DMGTile {
                         div()
                             .flex()
                             .flex_row()
-                            // Pixel Grid
+                            .p_4()
+                            .gap_4()
                             .child(
                                 div()
-                                    .track_focus(&self.focus_handle)
-                                    .flex()
-                                    .flex_col()
-                                    .on_action(cx.listener(|this, _: &Eraser, _, cx| {
-                                        this.tool = Tool::Draw;
-                                        this.eraser_active = true;
-                                        cx.notify();
-                                    }))
-                                    .on_action(cx.listener(|this, _: &Brush, _, cx| {
-                                        this.tool = Tool::Draw;
-                                        this.eraser_active = false;
-                                        cx.notify();
-                                    }))
-                                    .on_action(cx.listener(|this, _: &Bucket, _, cx| {
-                                        this.tool = Tool::Bucket;
-                                        this.eraser_active = false;
-                                        cx.notify();
-                                    }))
-                                    .on_action(cx.listener(|this, _: &Undo, _, cx| {
-                                        this.undo();
-                                        cx.notify();
-                                    }))
-                                    .on_action(cx.listener(|this, _: &Redo, _, cx| {
-                                        this.redo();
-                                        cx.notify();
-                                    }))
-                                    .on_mouse_up(MouseButton::Left, cx.listener(|this, _, _, cx| {
-                                        this.end_stroke();
-                                        cx.notify();
-                                    }))
-                                    .on_mouse_up_out(MouseButton::Left, cx.listener(|this, _, _, cx| {
-                                        this.end_stroke();
-                                        cx.notify();
-                                    }))
-                                    .children((0..GRID_SIZE).map(|row| {
+                                    .relative()
+                                    .child(
                                         div()
-                                            .flex()
-                                            .flex_row()
-                                            .children((0..GRID_SIZE).map(|col| {
-                                                let index = row * GRID_SIZE + col;
-                                                let shade = self.tiles[self.current_tile][index];
-                                                let color = Self::shade_color(shade, &self.palette);
-
+                                            .border_4()
+                                            .border_color(border_color)
+                                            .child(
                                                 div()
-                                                    .id(("pixel", index))
-                                                    .size(px(CELL_SIZE + 16.0))
-                                                    .bg(color)
-                                                    .border(px(0.5))
-                                                    .border_color(rgb(0x323232))
-                                                    .on_mouse_down(MouseButton::Left, cx.listener(move |this, _, _, cx| {
-                                                        this.start_stroke();
-                                                        let shade = this.active_shade();
-                                                        let changed = this.apply_tools(index, shade);
-                                                        this.previous_pixels = Some(index);
-                                                        if changed {
-                                                            cx.notify();
-                                                        }
+                                                    .track_focus(&self.focus_handle)
+                                                    .flex()
+                                                    .flex_col()
+                                                    .on_action(cx.listener(|this, _: &Eraser, _, cx| {
+                                                        this.tool = Tool::Draw;
+                                                        this.eraser_active = true;
+                                                        cx.notify();
                                                     }))
-                                                    .on_mouse_move(cx.listener(move |this, _event: &MouseMoveEvent, _, cx| {
-                                                        if !this.stroke_in_progress || this.previous_pixels == Some(index) {
-                                                            return;
-                                                        }
-                                                        let shade = this.active_shade();
-                                                        let changed = this.apply_tools(index, shade);
-                                                        this.previous_pixels = Some(index);
-                                                        if changed {
-                                                            cx.notify();
-                                                        }
+                                                    .on_action(cx.listener(|this, _: &Brush, _, cx| {
+                                                        this.tool = Tool::Draw;
+                                                        this.eraser_active = false;
+                                                        cx.notify();
                                                     }))
-                                            }))
-                                    })),
+                                                    .on_action(cx.listener(|this, _: &Bucket, _, cx| {
+                                                        this.tool = Tool::Bucket;
+                                                        this.eraser_active = false;
+                                                        cx.notify();
+                                                    }))
+                                                    .on_action(cx.listener(|this, _: &Undo, _, cx| {
+                                                        this.undo();
+                                                        cx.notify();
+                                                    }))
+                                                    .on_action(cx.listener(|this, _: &Redo, _, cx| {
+                                                        this.redo();
+                                                        cx.notify();
+                                                    }))
+                                                    .on_mouse_up(MouseButton::Left, cx.listener(|this, _, _, cx| {
+                                                        this.end_stroke();
+                                                        cx.notify();
+                                                    }))
+                                                    .on_mouse_up_out(MouseButton::Left, cx.listener(|this, _, _, cx| {
+                                                        this.end_stroke();
+                                                        cx.notify();
+                                                    }))
+                                                    .children((0..GRID_SIZE).map(|row| {
+                                                        div()
+                                                            .flex()
+                                                            .flex_row()
+                                                            .children((0..GRID_SIZE).map(|col| {
+                                                                let index = row * GRID_SIZE + col;
+                                                                let shade = self.tiles[self.current_tile][index];
+                                                                let color = Self::shade_color(shade, &self.palette);
+
+                                                                div()
+                                                                    .id(("pixel", index))
+                                                                    .size(px(CELL_SIZE + 16.0))
+                                                                    .bg(color)
+                                                                    .border(px(0.5))
+                                                                    .border_color(rgb(0x323232))
+                                                                    .on_mouse_down(MouseButton::Left, cx.listener(move |this, _, _, cx| {
+                                                                        this.start_stroke();
+                                                                        let shade = this.active_shade();
+                                                                        let changed = this.apply_tools(index, shade);
+                                                                        this.previous_pixels = Some(index);
+                                                                        if changed {
+                                                                            cx.notify();
+                                                                        }
+                                                                    }))
+                                                                    .on_mouse_move(cx.listener(move |this, _event: &MouseMoveEvent, _, cx| {
+                                                                        if !this.stroke_in_progress || this.previous_pixels == Some(index) {
+                                                                            return;
+                                                                        }
+                                                                        let shade = this.active_shade();
+                                                                        let changed = this.apply_tools(index, shade);
+                                                                        this.previous_pixels = Some(index);
+                                                                        if changed {
+                                                                            cx.notify();
+                                                                        }
+                                                                    }))
+                                                            }))
+                                                    })),
+                                            ),
+                                    )
+                                    .child(Self::corner_notch(bg_color, true, true, 2.0))
+                                    .child(Self::corner_notch(bg_color, true, false, 2.0))
+                                    .child(Self::corner_notch(bg_color, false, true, 2.0))
+                                    .child(Self::corner_notch(bg_color, false, false, 2.0)),
                             )
                             .child(
                                 div()
