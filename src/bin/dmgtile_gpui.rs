@@ -4,6 +4,9 @@ use gpui::prelude::FluentBuilder;
 use std::borrow::Cow;
 use std::path::PathBuf;
 use std::time::Instant;
+use std::sync::Arc;
+
+use image::Rgba as ImageRgba;
 
 #[path = "../components/mod.rs"]
 mod components;
@@ -16,6 +19,11 @@ const CELL_SIZE: f32 = 32.0;
 const GRID_SIZE: usize = 8;
 
 const PIXEL: f32 = 2.0;
+
+const PREVIEW_PIXEL_SIZE: f32 = 12.0;
+const PATTERN_PIXEL_SIZE: f32 = 6.0;
+const PATTERN_REPEAT: usize = 4;
+const TILE_THUMB_PIXEL: f32 = 1.5;
 
 actions!(dmgtile, [Quit, NewFile, OpenFile, Save, Undo, Redo, ShowAbout, Eraser, Brush, Bucket]);
 
@@ -55,6 +63,11 @@ fn set_app_menus(cx: &mut App) {
     ]);
 }
 
+struct TileImageCache {
+    key: ([u8; 64], Palette, u32),
+    image: Arc<RenderImage>,
+}
+
 pub enum Event {
     Copy,
     Cut,
@@ -66,7 +79,7 @@ enum Tool {
     Bucket,
 }
 
-#[derive(PartialEq, Eq)]
+#[derive(PartialEq, Eq, Clone, Copy)]
 enum Palette {
     Grayscale,
     ClassicGreen,
@@ -89,7 +102,6 @@ struct DMGTile {
     current_tile: usize,
     previous_pixels: Option<usize>,
     current_shade: u8,
-    right_shade: u8,
     tool: Tool,
     palette: Palette,
     undo_stack: Vec<Snapshot>,
@@ -101,6 +113,8 @@ struct DMGTile {
     toast: Option<Toast>,
     focus_handle: FocusHandle,
     eraser_active: bool,
+    pattern_image_cache: Option<TileImageCache>,
+    preview_image_cache: Option<TileImageCache>,
 }
 
 impl DMGTile {
@@ -110,7 +124,6 @@ impl DMGTile {
             current_tile: 0,
             previous_pixels: None,
             current_shade: 3,
-            right_shade: 0,
             tool: Tool::Draw,
             palette: Palette::ClassicGreen,
             undo_stack: Vec::new(),
@@ -122,7 +135,26 @@ impl DMGTile {
             toast: None,
             focus_handle: cx.focus_handle(),
             eraser_active: false,
+            pattern_image_cache: None,
+            preview_image_cache: None,
         }
+    }
+
+    fn get_or_build_tile_image(
+        cache: &mut Option<TileImageCache>,
+        tile: [u8; 64],
+        palette: Palette,
+        pixel_scale: u32,
+    ) -> Arc<RenderImage> {
+        let key = (tile, palette, pixel_scale);
+        if let Some(existing) = cache {
+            if existing.key == key {
+                return existing.image.clone();
+            }
+        }
+        let image = Self::build_tile_render_image(tile, palette, pixel_scale);
+        *cache = Some(TileImageCache { key, image: image.clone() });
+        image
     }
 
     fn active_shade(&self) -> u8 {
@@ -133,24 +165,22 @@ impl DMGTile {
     //  Tools
     // =======
 
-    fn apply_tools(&mut self, index: usize, shade: u8) {
+    fn apply_tools(&mut self, index: usize, shade: u8)  -> bool{
         match self.tool {
             Tool::Draw => {
-                self.paint_pixel(index, shade);
+                let changed = self.paint_pixel(index, shade);
                 self.previous_pixels = Some(index);
+                changed
             }
-            Tool::Bucket => {
-                self.bucket_fill(index, shade);
-            }
+            Tool::Bucket => self.bucket_fill(index, shade),
         }
     }
 
-    fn bucket_fill(&mut self, start_index: usize, new_shade: u8) {
-        self.push_undo();
+    fn bucket_fill(&mut self, start_index: usize, new_shade: u8) -> bool {
         let target_shade = self.tiles[self.current_tile][start_index];
 
         if target_shade == new_shade {
-            return; // already the same shade
+            return false; // already the same shade
         }
 
         let mut stack = vec![start_index];
@@ -180,14 +210,17 @@ impl DMGTile {
         }
 
         self.modified[self.current_tile] = true;
+        true
     }
 
     
-    fn paint_pixel(&mut self, index: usize, shade: u8) {
-        self.push_undo();
+    fn paint_pixel(&mut self, index: usize, shade: u8) -> bool {
         if self.tiles[self.current_tile][index] != shade {
             self.tiles[self.current_tile][index] = shade;
             self.modified[self.current_tile] = true;
+            true
+        } else {
+            false
         }
     }
 
@@ -230,6 +263,48 @@ impl DMGTile {
                 _ => rgb(0x081820),
             },
         }
+    }
+
+    fn shade_rgb_bytes(shade: u8, palette: &Palette) -> (u8, u8, u8) {
+        match palette {
+            Palette::Grayscale => match shade {
+                0 => (0xff, 0xff, 0xff),
+                1 => (0xaa, 0xaa, 0xaa),
+                2 => (0x55, 0x55, 0x55),
+                _ => (0x00, 0x00, 0x00),
+            },
+            Palette::ClassicGreen => match shade {
+                0 => (0xe0, 0xf8, 0xd0),
+                1 => (0x88, 0xc0, 0x70),
+                2 => (0x34, 0x68, 0x56),
+                _ => (0x08, 0x18, 0x20),
+            },
+        }
+    }
+
+    fn build_tile_render_image(tile: [u8; 64], palette: Palette, pixel_scale: u32) -> Arc<RenderImage> {
+        let dim = GRID_SIZE as u32 * pixel_scale;
+        let mut buffer = image::RgbaImage::new(dim, dim);
+
+        for row in 0..GRID_SIZE {
+            for col in 0..GRID_SIZE {
+                let shade = tile[row * GRID_SIZE + col];
+                let (r, g, b) = Self::shade_rgb_bytes(shade, &palette);
+                // RenderImage's doc comment says it stores BGRA — swap channels here to match
+                let pixel = ImageRgba([b, g, r, 255]);
+
+                for dy in 0..pixel_scale {
+                    for dx in 0..pixel_scale {
+                        let x = col as u32 * pixel_scale + dx;
+                        let y = row as u32 * pixel_scale + dy;
+                        buffer.put_pixel(x, y, pixel);
+                    }
+                }
+            }
+        }
+
+        let frame = image::Frame::new(buffer);
+        Arc::new(RenderImage::new(vec![frame]))
     }
 
     fn render_status_bar(&self, cx: &mut Context<Self>) -> impl IntoElement {
@@ -368,6 +443,62 @@ impl DMGTile {
             // self.thumbnails = vec![None; MAX_TILES];
         }
     }
+
+    fn render_pattern_chunk(&mut self) -> impl IntoElement {
+        let tile_px = px(GRID_SIZE as f32 * PATTERN_PIXEL_SIZE);
+        let image = Self::get_or_build_tile_image(
+            &mut self.pattern_image_cache,
+            self.tiles[self.current_tile],
+            self.palette,
+            PATTERN_PIXEL_SIZE as u32,
+        );
+
+        div()
+            .flex()
+            .flex_col()
+            .children((0..PATTERN_REPEAT).map(move |_| {
+                let image = image.clone();
+                div()
+                    .flex()
+                    .flex_row()
+                    .children((0..PATTERN_REPEAT).map(move |_| {
+                        img(image.clone()).w(tile_px).h(tile_px)
+                    }))
+            }))
+    }
+
+    fn render_preview_panel(&mut self) -> impl IntoElement {
+        let chunk_size = px(PATTERN_REPEAT as f32 * GRID_SIZE as f32 * PATTERN_PIXEL_SIZE);
+        let preview_size = px(GRID_SIZE as f32 * PREVIEW_PIXEL_SIZE);
+
+        let preview_image = Self::get_or_build_tile_image(
+            &mut self.preview_image_cache,
+            self.tiles[self.current_tile],
+            self.palette,
+            PREVIEW_PIXEL_SIZE as u32,
+        );
+
+        div()
+            .p_2()
+            .child(
+                div()
+                    .relative()
+                    .w(chunk_size)
+                    .h(chunk_size)
+                    .child(self.render_pattern_chunk())
+                    .child(
+                        div()
+                            .absolute()
+                            .top(px(0.0))
+                            .left(px(0.0))
+                            .w(preview_size)
+                            .h(preview_size)
+                            .border_1()
+                            .border_color(rgb(0x08171c))
+                            .child(img(preview_image).w(preview_size).h(preview_size)),
+                    ),
+            )
+    }
 }
 
 impl Render for DMGTile {
@@ -381,73 +512,90 @@ impl Render for DMGTile {
             .bg(rgb(0x08171c))
             .child(
                 div()
-                    .track_focus(&self.focus_handle)
                     .flex()
-                    .flex_col()
-                    .on_action(cx.listener(|this, _: &Eraser, _, cx| {
-                        this.tool = Tool::Draw;
-                        this.eraser_active = true;
-                        cx.notify();
-                    }))
-                    .on_action(cx.listener(|this, _: &Brush, _, cx| {
-                        this.tool = Tool::Draw;
-                        this.eraser_active = false;
-                        cx.notify();
-                    }))
-                    .on_action(cx.listener(|this, _: &Bucket, _, cx| {
-                        this.tool = Tool::Bucket;
-                        this.eraser_active = false;
-                        cx.notify();
-                    }))
-                    .on_action(cx.listener(|this, _: &Undo, _, cx| {
-                        this.undo();
-                        cx.notify();
-                    }))
-                    .on_action(cx.listener(|this, _: &Redo, _, cx| {
-                        this.redo();
-                        cx.notify();
-                    }))
-                    .on_mouse_up(MouseButton::Left, cx.listener(|this, _, _, cx| {
-                        this.end_stroke();
-                        cx.notify();
-                    }))
-                    .on_mouse_up_out(MouseButton::Left, cx.listener(|this, _, _, cx| {
-                        this.end_stroke();
-                        cx.notify();
-                    }))
-                    .children((0..GRID_SIZE).map(|row| {
+                    .flex_row()
+                    .child(
+                        div()
+                            .track_focus(&self.focus_handle)
+                            .flex()
+                            .flex_col()
+                            .on_action(cx.listener(|this, _: &Eraser, _, cx| {
+                                this.tool = Tool::Draw;
+                                this.eraser_active = true;
+                                cx.notify();
+                            }))
+                            .on_action(cx.listener(|this, _: &Brush, _, cx| {
+                                this.tool = Tool::Draw;
+                                this.eraser_active = false;
+                                cx.notify();
+                            }))
+                            .on_action(cx.listener(|this, _: &Bucket, _, cx| {
+                                this.tool = Tool::Bucket;
+                                this.eraser_active = false;
+                                cx.notify();
+                            }))
+                            .on_action(cx.listener(|this, _: &Undo, _, cx| {
+                                this.undo();
+                                cx.notify();
+                            }))
+                            .on_action(cx.listener(|this, _: &Redo, _, cx| {
+                                this.redo();
+                                cx.notify();
+                            }))
+                            .on_mouse_up(MouseButton::Left, cx.listener(|this, _, _, cx| {
+                                this.end_stroke();
+                                cx.notify();
+                            }))
+                            .on_mouse_up_out(MouseButton::Left, cx.listener(|this, _, _, cx| {
+                                this.end_stroke();
+                                cx.notify();
+                            }))
+                            .children((0..GRID_SIZE).map(|row| {
+                                div()
+                                    .flex()
+                                    .flex_row()
+                                    .children((0..GRID_SIZE).map(|col| {
+                                        let index = row * GRID_SIZE + col;
+                                        let shade = self.tiles[self.current_tile][index];
+                                        let color = Self::shade_color(shade, &self.palette);
+
+                                        div()
+                                            .id(("pixel", index))
+                                            .size(px(CELL_SIZE + 16.0))
+                                            .bg(color)
+                                            .border(px(0.5))
+                                            .border_color(rgb(0x323232))
+                                            .on_mouse_down(MouseButton::Left, cx.listener(move |this, _, _, cx| {
+                                                this.start_stroke();
+                                                let shade = this.active_shade();
+                                                let changed = this.apply_tools(index, shade);
+                                                this.previous_pixels = Some(index);
+                                                if changed {
+                                                    cx.notify();
+                                                }
+                                            }))
+                                        .on_mouse_move(cx.listener(move |this, _event: &MouseMoveEvent, _, cx| {
+                                            if !this.stroke_in_progress || this.previous_pixels == Some(index) {
+                                                return;
+                                            }
+                                            let shade = this.active_shade();
+                                            let changed = this.apply_tools(index, shade);
+                                            this.previous_pixels = Some(index);
+                                            if changed {
+                                                cx.notify();
+                                            }
+                                        }))
+                                    }))
+                            })),
+                    )
+                    .child(
                         div()
                             .flex()
-                            .flex_row()
-                            .children((0..GRID_SIZE).map(|col| {
-                                let index = row * GRID_SIZE + col;
-                                let shade = self.tiles[self.current_tile][index];
-                                let color = Self::shade_color(shade, &self.palette);
-
-                                div()
-                                    .id(("pixel", index))
-                                    .size(px(CELL_SIZE + 16.0))
-                                    .bg(color)
-                                    .border(px(0.5))
-                                    .border_color(rgb(0x323232))
-                                    .on_mouse_down(MouseButton::Left, cx.listener(move |this, _, _, cx| {
-                                        this.start_stroke();
-                                        let shade = this.active_shade();
-                                        this.apply_tools(index, shade);
-                                        this.previous_pixels = Some(index);
-                                        cx.notify();
-                                    }))
-                                    .on_mouse_move(cx.listener(move |this, _event: &MouseMoveEvent, _, cx| {
-                                        if !this.stroke_in_progress || this.previous_pixels == Some(index) {
-                                            return;
-                                        }
-                                        let shade = this.active_shade();
-                                        this.apply_tools(index, shade);
-                                        this.previous_pixels = Some(index);
-                                        cx.notify();
-                                    }))
-                            }))
-                    })),
+                            .flex_col()
+                            .w(px(140.0))
+                            .h_full()
+                            .child(self.render_preview_panel())
+                    ),
             )
             .child(self.render_status_bar(cx))
     }
