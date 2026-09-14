@@ -25,7 +25,7 @@ const PATTERN_PIXEL_SIZE: f32 = 6.0;
 const PATTERN_REPEAT: usize = 4;
 const TILE_THUMB_PIXEL: f32 = 1.5;
 
-actions!(dmgtile, [Quit, NewFile, OpenFile, Save, Undo, Redo, ShowAbout, Eraser, Brush, Bucket]);
+actions!(dmgtile, [Quit, NewFile, OpenFile, Save, Undo, Redo, ShowAbout, Eraser, Brush, Bucket, ShiftUp, ShiftDown, ShiftLeft, ShiftRight]);
 
 fn set_app_menus(cx: &mut App) {
     cx.set_menus(vec![
@@ -235,6 +235,70 @@ impl DMGTile {
     fn end_stroke(&mut self) {
         self.stroke_in_progress = false;
         self.previous_pixels = None;
+    }
+
+    fn shift_up(&mut self) {
+        self.push_undo();
+        let mut new_pixels = [0u8; 64];
+        for row in 0..GRID_SIZE {
+            let source_row = (row + 1) % GRID_SIZE;
+            for col in 0..GRID_SIZE {
+                new_pixels[row * GRID_SIZE + col] = self.tiles[self.current_tile][source_row * GRID_SIZE + col];
+            }
+        }
+        self.tiles[self.current_tile] = new_pixels;
+        self.modified[self.current_tile] = true;
+    }
+
+    fn shift_down(&mut self) {
+        self.push_undo();
+        let mut new_pixels = [0u8; 64];
+        for row in 0..GRID_SIZE {
+            let source_row = (row + GRID_SIZE - 1) % GRID_SIZE;
+            for col in 0..GRID_SIZE {
+                new_pixels[row * GRID_SIZE + col] = self.tiles[self.current_tile][source_row * GRID_SIZE + col];
+            }
+        }
+        self.tiles[self.current_tile] = new_pixels;
+        self.modified[self.current_tile] = true;
+    }
+
+    fn shift_left(&mut self) {
+        self.push_undo();
+        let mut new_pixels = [0u8; 64];
+        for row in 0..GRID_SIZE {
+            for col in 0..GRID_SIZE {
+                let source_col = (col + 1) % GRID_SIZE;
+                new_pixels[row * GRID_SIZE + col] = self.tiles[self.current_tile][row * GRID_SIZE + source_col];
+            }
+        }
+        self.tiles[self.current_tile] = new_pixels;
+        self.modified[self.current_tile] = true;
+    }
+
+    fn shift_right(&mut self) {
+        self.push_undo();
+        let mut new_pixels = [0u8; 64];
+        for row in 0..GRID_SIZE {
+            for col in 0..GRID_SIZE {
+                let source_col = (col + GRID_SIZE - 1) % GRID_SIZE;
+                new_pixels[row * GRID_SIZE + col] = self.tiles[self.current_tile][row * GRID_SIZE + source_col];
+            }
+        }
+        self.tiles[self.current_tile] = new_pixels;
+        self.modified[self.current_tile] = true;
+    }
+
+    fn rotate_90_clockwise(&mut self) {
+        self.push_undo();
+        let mut new_pixels = [0u8; 64];
+        for row in 0..GRID_SIZE {
+            for col in 0..GRID_SIZE {
+                new_pixels[row * GRID_SIZE + col] = self.tiles[self.current_tile][(GRID_SIZE - 1 - col) * GRID_SIZE + row];
+            }
+        }
+        self.tiles[self.current_tile] = new_pixels;
+        self.modified[self.current_tile] = true;
     }
 
     fn corner_notch(color: Rgba, top: bool, left: bool, multiplicator: f32) -> impl IntoElement {
@@ -617,6 +681,28 @@ impl Render for DMGTile {
                                                         this.redo();
                                                         cx.notify();
                                                     }))
+                                                    .on_action(cx.listener(|this, _: &ShiftUp, _, cx| {
+                                                        this.shift_up();
+                                                        cx.notify();
+                                                    }))
+                                                    .on_action(cx.listener(|this, _: &ShiftDown, _, cx| {
+                                                        this.shift_down();
+                                                        cx.notify();
+                                                    }))
+                                                    .on_action(cx.listener(|this, _: &ShiftLeft, _, cx| {
+                                                        this.shift_left();
+                                                        cx.notify();
+                                                    }))
+                                                    .on_action(cx.listener(|this, _: &ShiftRight, _, cx| {
+                                                        this.shift_right();
+                                                        cx.notify();
+                                                    }))
+                                                    .on_key_down(cx.listener(|this, event: &KeyDownEvent, _, cx| {
+                                                        if event.keystroke.key == "r" && !event.is_held {
+                                                            this.rotate_90_clockwise();
+                                                            cx.notify();
+                                                        }
+                                                    }))
                                                     .on_mouse_up(MouseButton::Left, cx.listener(|this, _, _, cx| {
                                                         this.end_stroke();
                                                         cx.notify();
@@ -719,6 +805,10 @@ fn main() {
             KeyBinding::new("e", Eraser, Some("DMGTile")),
             KeyBinding::new("b", Brush, Some("DMGTile")),
             KeyBinding::new("g", Bucket, Some("DMGTile")),
+            KeyBinding::new("up", ShiftUp, Some("DMGTile")),
+            KeyBinding::new("down", ShiftDown, Some("DMGTile")),
+            KeyBinding::new("left", ShiftLeft, Some("DMGTile")),
+            KeyBinding::new("right", ShiftRight, Some("DMGTile")),
         ]);
 
         set_app_menus(cx);
