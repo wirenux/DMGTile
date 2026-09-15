@@ -241,6 +241,13 @@ impl DMGTile {
         self.clipboard = Some(self.tiles[self.current_tile]);
     }
 
+    fn cut_tile(&mut self) {
+        self.copy_tile();
+        self.push_undo();
+        self.tiles[self.current_tile] = [0u8; 64];
+        self.modified[self.current_tile] = true;
+    }
+
     fn paste_tile(&mut self) {
         if let Some(data) = self.clipboard {
             self.push_undo();
@@ -697,6 +704,10 @@ impl Render for DMGTile {
                                                         this.copy_tile();
                                                         cx.notify();
                                                     }))
+                                                    .on_action(cx.listener(|this, _: &Cut, _, cx| {
+                                                        this.cut_tile();
+                                                        cx.notify();
+                                                    }))
                                                     .on_action(cx.listener(|this, _: &Paste, _, cx| {
                                                         this.paste_tile();
                                                         cx.notify();
@@ -830,6 +841,7 @@ fn main() {
             KeyBinding::new("left", ShiftLeft, Some("DMGTile")),
             KeyBinding::new("right", ShiftRight, Some("DMGTile")),
             KeyBinding::new("cmd-c", Copy, Some("DMGTile")),
+            KeyBinding::new("cmd-x", Cut, Some("DMGTile")),
             KeyBinding::new("cmd-v", Paste, Some("DMGTile")),
         ]);
 
