@@ -25,7 +25,7 @@ const PATTERN_PIXEL_SIZE: f32 = 6.0;
 const PATTERN_REPEAT: usize = 4;
 const TILE_THUMB_PIXEL: f32 = 1.5;
 
-actions!(dmgtile, [Quit, NewFile, OpenFile, Save, Undo, Redo, ShowAbout, Eraser, Brush, Bucket, ShiftUp, ShiftDown, ShiftLeft, ShiftRight]);
+actions!(dmgtile, [Quit, NewFile, OpenFile, Save, Undo, Redo, Copy, Paste, Cut, ShowAbout, Eraser, Brush, Bucket, ShiftUp, ShiftDown, ShiftLeft, ShiftRight]);
 
 fn set_app_menus(cx: &mut App) {
     cx.set_menus(vec![
@@ -235,6 +235,18 @@ impl DMGTile {
     fn end_stroke(&mut self) {
         self.stroke_in_progress = false;
         self.previous_pixels = None;
+    }
+
+    fn copy_tile(&mut self) {
+        self.clipboard = Some(self.tiles[self.current_tile]);
+    }
+
+    fn paste_tile(&mut self) {
+        if let Some(data) = self.clipboard {
+            self.push_undo();
+            self.tiles[self.current_tile] = data;
+            self.modified[self.current_tile] = true;
+        }
     }
 
     fn shift_up(&mut self) {
@@ -681,6 +693,14 @@ impl Render for DMGTile {
                                                         this.redo();
                                                         cx.notify();
                                                     }))
+                                                    .on_action(cx.listener(|this, _: &Copy, _, cx| {
+                                                        this.copy_tile();
+                                                        cx.notify();
+                                                    }))
+                                                    .on_action(cx.listener(|this, _: &Paste, _, cx| {
+                                                        this.paste_tile();
+                                                        cx.notify();
+                                                    }))
                                                     .on_action(cx.listener(|this, _: &ShiftUp, _, cx| {
                                                         this.shift_up();
                                                         cx.notify();
@@ -809,6 +829,8 @@ fn main() {
             KeyBinding::new("down", ShiftDown, Some("DMGTile")),
             KeyBinding::new("left", ShiftLeft, Some("DMGTile")),
             KeyBinding::new("right", ShiftRight, Some("DMGTile")),
+            KeyBinding::new("cmd-c", Copy, Some("DMGTile")),
+            KeyBinding::new("cmd-v", Paste, Some("DMGTile")),
         ]);
 
         set_app_menus(cx);

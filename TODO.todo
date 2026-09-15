@@ -10,6 +10,8 @@
 - [x] Add little popup to inform the user that the file has been saved
 - [x] Undo button
 - [x] Redo button
-- [ ] Write a little manual
+- [?] Write a little manual
 
 - [ ] Add `features = ["wayland", "x11"]` to `gpui_platform` in `Cargo.toml`
+
+- [x] Add copy/paste + undo / redo on the copy
