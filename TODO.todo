@@ -16,3 +16,6 @@
 
 - [x] Add copy/paste + undo / redo on the copy
 - [x] Add cut
+- [ ] Add submission to awesome-gpui (with a pr)
+- [ ] Modify icon path in the final release
+- [ ] Remplace dmgtile_gpui.rs to main.rs (at the end before modifing icon path)
