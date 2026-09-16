@@ -1,6 +1,8 @@
 use gpui::*;
 use gpui::prelude::FluentBuilder;
 
+use std::collections::HashMap;
+use std::sync::OnceLock;
 use std::borrow::Cow;
 use std::path::PathBuf;
 use std::time::Instant;
@@ -25,7 +27,31 @@ const PATTERN_PIXEL_SIZE: f32 = 6.0;
 const PATTERN_REPEAT: usize = 4;
 const TILE_THUMB_PIXEL: f32 = 1.5;
 
-actions!(dmgtile, [Quit, NewFile, OpenFile, Save, Undo, Redo, Copy, Paste, Cut, ShowAbout, Eraser, Brush, Bucket, ShiftUp, ShiftDown, ShiftLeft, ShiftRight]);
+actions!(
+    dmgtile,
+    [
+        Quit,
+        NewFile,
+        OpenFile,
+        Save,
+        Undo,
+        Redo,
+        Copy,
+        Paste,
+        Cut,
+        ShowAbout,
+        Eraser,
+        Brush,
+        Bucket,
+        ShiftUp,
+        ShiftDown,
+        ShiftLeft,
+        ShiftRight,
+        FlipH,
+        FlipV,
+        Rotate
+    ]
+);
 
 fn set_app_menus(cx: &mut App) {
     cx.set_menus(vec![
@@ -166,7 +192,7 @@ impl DMGTile {
     //  Tools
     // =======
 
-    fn apply_tools(&mut self, index: usize, shade: u8)  -> bool{
+    fn apply_tools(&mut self, index: usize, shade: u8) -> bool {
         match self.tool {
             Tool::Draw => {
                 let changed = self.paint_pixel(index, shade);
@@ -197,16 +223,16 @@ impl DMGTile {
             let col = index % GRID_SIZE;
 
             if row > 0 {
-                stack.push(index - GRID_SIZE); // up
+                stack.push(index - GRID_SIZE);
             }
             if row < GRID_SIZE - 1 {
-                stack.push(index + GRID_SIZE); // down
+                stack.push(index + GRID_SIZE);
             }
             if col > 0 {
-                stack.push(index - 1); // left
+                stack.push(index - 1);
             }
             if col < GRID_SIZE - 1 {
-                stack.push(index + 1); // right
+                stack.push(index + 1);
             }
         }
 
@@ -214,7 +240,6 @@ impl DMGTile {
         true
     }
 
-    
     fn paint_pixel(&mut self, index: usize, shade: u8) -> bool {
         if self.tiles[self.current_tile][index] != shade {
             self.tiles[self.current_tile][index] = shade;
@@ -308,6 +333,32 @@ impl DMGTile {
         self.modified[self.current_tile] = true;
     }
 
+    fn flip_horizontally(&mut self) {
+        self.push_undo();
+        let mut new_pixels = [0u8; 64];
+        for row in 0..GRID_SIZE {
+            let mirrored_row = GRID_SIZE - 1 - row;
+            for col in 0..GRID_SIZE {
+                new_pixels[row * GRID_SIZE + col] = self.tiles[self.current_tile][mirrored_row * GRID_SIZE + col];
+            }
+        }
+        self.tiles[self.current_tile] = new_pixels;
+        self.modified[self.current_tile] = true;
+    }
+
+    fn flip_vertically(&mut self) {
+        self.push_undo();
+        let mut new_pixels = [0u8; 64];
+        for row in 0..GRID_SIZE {
+            for col in 0..GRID_SIZE {
+                let mirrored_col = GRID_SIZE - 1 - col;
+                new_pixels[row * GRID_SIZE + col] = self.tiles[self.current_tile][row * GRID_SIZE + mirrored_col];
+            }
+        }
+        self.tiles[self.current_tile] = new_pixels;
+        self.modified[self.current_tile] = true;
+    }
+
     fn rotate_90_clockwise(&mut self) {
         self.push_undo();
         let mut new_pixels = [0u8; 64];
@@ -330,6 +381,182 @@ impl DMGTile {
             .when(!top, |s| s.bottom(px(0.)))
             .when(left, |s| s.left(px(0.)))
             .when(!left, |s| s.right(px(0.)))
+    }
+
+    fn get_icon_image(icon_name: &'static str) -> Arc<RenderImage> {
+        static CACHE: OnceLock<HashMap<&'static str, Arc<RenderImage>>> = OnceLock::new();
+
+        let cache = CACHE.get_or_init(|| {
+            let icons = [
+                "pen.png", "eraser.png", "bucket.png",
+                "left.png", "right.png", "up.png", "down.png",
+                "flipH.png", "flipV.png", "rotate.png",
+            ];
+
+            let mut map = HashMap::new();
+            let scale = 4u32;
+
+            for name in icons {
+                let full_path = format!("{}/assets/aseprite/gpui/{}", env!("CARGO_MANIFEST_DIR"), name); // TODO: Maybe change the folder when release build
+                if let Ok(img_bytes) = std::fs::read(&full_path) && let Ok(decoded) = image::load_from_memory(&img_bytes) {
+                    let rgba = decoded.to_rgba8();
+                    let orig_w = rgba.width();
+                    let orig_h = rgba.height();
+
+                    let scaled_w = orig_w * scale;
+                    let scaled_h = orig_h * scale;
+                    let mut scaled_buffer = vec![0u8; (scaled_w * scaled_h * 4) as usize];
+
+                    for y in 0..orig_h {
+                        for x in 0..orig_w {
+                            let pixel = rgba.get_pixel(x, y);
+                            let r = pixel[0];
+                            let g = pixel[1];
+                            let b = pixel[2];
+                            let a = pixel[3];
+
+                            for sy in 0..scale {
+                                for sx in 0..scale {
+                                    let out_x = x * scale + sx;
+                                    let out_y = y * scale + sy;
+                                    let idx = ((out_y * scaled_w + out_x) * 4) as usize;
+
+                                    scaled_buffer[idx] = b;     // B
+                                    scaled_buffer[idx + 1] = g; // G
+                                    scaled_buffer[idx + 2] = r; // R
+                                    scaled_buffer[idx + 3] = a; // A
+                                }
+                            }
+                        }
+                    }
+
+                    if let Some(img_buffer) = image::RgbaImage::from_raw(scaled_w, scaled_h, scaled_buffer) {
+                        let frame = image::Frame::new(img_buffer);
+                        map.insert(name, Arc::new(RenderImage::new(vec![frame])));
+                    }
+                }
+            }
+            map
+        });
+
+        cache.get(icon_name).cloned().expect("Icon missing from cache")
+    }
+
+    fn gameboy_icon_button(
+        id: impl Into<ElementId>,
+        icon_filename: &'static str,
+        selected: bool,
+        cx: &mut Context<Self>,
+        on_click: impl Fn(&mut Self, &MouseDownEvent, &mut Window, &mut Context<Self>) + 'static,
+    ) -> impl IntoElement {
+        let bg_color = if selected { rgb(0x88C070) } else { rgb(0x08171C) };
+        let behind_bg = rgb(0x08171C);
+
+        let icon_image = Self::get_icon_image(icon_filename);
+
+        div()
+            .id(id)
+            .relative()
+            .size(px(48.0))
+            .flex()
+            .items_center()
+            .justify_center()
+            .bg(bg_color)
+            .cursor_pointer()
+            .on_mouse_down(MouseButton::Left, cx.listener(move |this, event, window, cx| {
+                on_click(this, event, window, cx);
+            }))
+            .child(
+                img(icon_image)
+                    .size(px(44.0))
+            )
+            .child(Self::corner_notch(behind_bg, true, true, 2.0))
+            .child(Self::corner_notch(behind_bg, true, false, 2.0))
+            .child(Self::corner_notch(behind_bg, false, true, 2.0))
+            .child(Self::corner_notch(behind_bg, false, false, 2.0))
+    }
+
+    fn render_toolbar(&mut self, cx: &mut Context<Self>) -> impl IntoElement {
+        let is_pen_selected = matches!(self.tool, Tool::Draw) && !self.eraser_active;
+        let is_eraser_selected = matches!(self.tool, Tool::Draw) && self.eraser_active;
+        let is_bucket_selected = matches!(self.tool, Tool::Bucket);
+
+        div()
+            .flex()
+            .flex_row()
+            .items_center()
+            .gap_2()
+            .p_2()
+            .bg(rgb(0x08171C))
+            .border_b_1()
+            .border_color(rgb(0x1a262c))
+            .child(
+                div()
+                    .flex()
+                    .flex_row()
+                    .gap_1()
+                    .child(Self::gameboy_icon_button("btn-pen", "pen.png", is_pen_selected, cx, |this, _, _, cx| {
+                        this.tool = Tool::Draw;
+                        this.eraser_active = false;
+                        cx.notify();
+                    }))
+                    .child(Self::gameboy_icon_button("btn-eraser", "eraser.png", is_eraser_selected, cx, |this, _, _, cx| {
+                        this.tool = Tool::Draw;
+                        this.eraser_active = true;
+                        cx.notify();
+                    }))
+                    .child(Self::gameboy_icon_button("btn-bucket", "bucket.png", is_bucket_selected, cx, |this, _, _, cx| {
+                        this.tool = Tool::Bucket;
+                        this.eraser_active = false;
+                        cx.notify();
+                    }))
+            )
+
+            .child(div().w(px(1.0)).h(px(24.0)).bg(rgb(0x323232)))
+
+            .child(
+                div()
+                    .flex()
+                    .flex_row()
+                    .gap_1()
+                    .child(Self::gameboy_icon_button("btn-shift-left", "left.png", false, cx, |this, _, _, cx| {
+                        this.shift_left();
+                        cx.notify();
+                    }))
+                    .child(Self::gameboy_icon_button("btn-shift-right", "right.png", false, cx, |this, _, _, cx| {
+                        this.shift_right();
+                        cx.notify();
+                    }))
+                    .child(Self::gameboy_icon_button("btn-shift-up", "up.png", false, cx, |this, _, _, cx| {
+                        this.shift_up();
+                        cx.notify();
+                    }))
+                    .child(Self::gameboy_icon_button("btn-shift-down", "down.png", false, cx, |this, _, _, cx| {
+                        this.shift_down();
+                        cx.notify();
+                    }))
+            )
+
+            .child(div().w(px(1.0)).h(px(24.0)).bg(rgb(0x323232)))
+
+            .child(
+                div()
+                    .flex()
+                    .flex_row()
+                    .gap_1()
+                    .child(Self::gameboy_icon_button("btn-flip-h", "flipH.png", false, cx, |this, _, _, cx| {
+                        this.flip_vertically();
+                        cx.notify();
+                    }))
+                    .child(Self::gameboy_icon_button("btn-flip-v", "flipV.png", false, cx, |this, _, _, cx| {
+                        this.flip_horizontally();
+                        cx.notify();
+                    }))
+                    .child(Self::gameboy_icon_button("btn-rotate", "rotate.png", false, cx, |this, _, _, cx| {
+                        this.rotate_90_clockwise();
+                        cx.notify();
+                    }))
+            )
     }
 
     fn shade_color(shade: u8, palette: &Palette) -> Rgba {
@@ -442,19 +669,18 @@ impl DMGTile {
             .items_center()
             .gap_2()
             .pl_5()
-            // Current shade indicator
             .child(
                 div()
                     .flex()
                     .flex_row()
                     .items_center()
                     .gap_1()
-                    .child(div().text_color(rgb(0x86C06C)).child("L")) // TODO: Change letter
+                    .child(div().text_color(rgb(0x86C06C)).child("L"))
                     .child(
                         div()
                             .size(px(20.0))
                             .relative()
-                            .pt(px(2.0)) // make the number centered with the Pixter-Display font
+                            .pt(px(2.0))
                             .bg(shade_color)
                             .flex()
                             .items_center()
@@ -470,9 +696,7 @@ impl DMGTile {
                             .child(Self::corner_notch(rgb(0x1a1a1a), false, false, 1.0))
                     ),
             )
-            // Separator
             .child(div().w(px(1.0)).h(px(20.0)).bg(rgb(0x323232)))
-            // Shade selector
             .child(
                 div()
                     .flex()
@@ -514,9 +738,7 @@ impl DMGTile {
                             })
                     }))
             )
-            // Separator
             .child(div().w(px(1.0)).h(px(20.0)).bg(rgb(0x323232)))
-            // Palette selector
             .child(
                 div()
                     .flex()
@@ -577,7 +799,6 @@ impl DMGTile {
         );
 
         div()
-            // .top(px(128.0))
             .flex()
             .flex_col()
             .children((0..PATTERN_REPEAT).map(move |_| {
@@ -592,7 +813,6 @@ impl DMGTile {
     }
 
     fn render_preview_panel(&mut self) -> impl IntoElement {
-        let chunk_size = px(PATTERN_REPEAT as f32 * GRID_SIZE as f32 * PATTERN_PIXEL_SIZE);
         let preview_size = px(GRID_SIZE as f32 * PREVIEW_PIXEL_SIZE);
         let bg_color = rgb(0x08171c);
         let border_color = rgb(0x88C070);
@@ -659,6 +879,7 @@ impl Render for DMGTile {
                     .flex_col()
                     .flex_grow(1.0)
                     .h_full()
+                    .child(self.render_toolbar(cx))
                     .child(
                         div()
                             .flex()
@@ -726,6 +947,18 @@ impl Render for DMGTile {
                                                     }))
                                                     .on_action(cx.listener(|this, _: &ShiftRight, _, cx| {
                                                         this.shift_right();
+                                                        cx.notify();
+                                                    }))
+                                                    .on_action(cx.listener(|this, _: &FlipH, _, cx| {
+                                                        this.flip_horizontally();
+                                                        cx.notify();
+                                                    }))
+                                                    .on_action(cx.listener(|this, _: &FlipV, _, cx| {
+                                                        this.flip_vertically();
+                                                        cx.notify();
+                                                    }))
+                                                    .on_action(cx.listener(|this, _: &Rotate, _, cx| {
+                                                        this.rotate_90_clockwise();
                                                         cx.notify();
                                                     }))
                                                     .on_key_down(cx.listener(|this, event: &KeyDownEvent, _, cx| {
@@ -814,10 +1047,10 @@ impl Render for DMGTile {
 
 fn main() {
     Application::with_platform(gpui_platform::current_platform(false)).run(|cx: &mut App| {
-        cx.activate(true); // focus on the app
-        cx.set_cursor_hide_mode(CursorHideMode::Never); // prevent mouse flicker when undo/redo
+        cx.activate(true);
+        cx.set_cursor_hide_mode(CursorHideMode::Never);
 
-        let font_bytes = include_bytes!("../../font/Pixter-Display.ttf").to_vec(); // TODO: when release change path to the good one
+        let font_bytes = include_bytes!("../../font/Pixter-Display.ttf").to_vec();
 
         cx.text_system()
             .add_fonts(vec![Cow::Owned(font_bytes)])
@@ -830,7 +1063,7 @@ fn main() {
         cx.on_action(|_: &ShowAbout, _cx| { println!("About"); });
 
         cx.bind_keys([
-            KeyBinding::new("cmd-q", Quit, Some("DMGTile")), // faster quit than using the traffic light
+            KeyBinding::new("cmd-q", Quit, Some("DMGTile")),
             KeyBinding::new("cmd-z", Undo, Some("DMGTile")),
             KeyBinding::new("cmd-shift-z", Redo, Some("DMGTile")),
             KeyBinding::new("e", Eraser, Some("DMGTile")),
