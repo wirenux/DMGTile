@@ -49,7 +49,8 @@ actions!(
         ShiftRight,
         FlipH,
         FlipV,
-        Rotate
+        Rotate,
+        ToastDev,
     ]
 );
 
@@ -84,6 +85,11 @@ fn set_app_menus(cx: &mut App) {
         Menu {
             name: "Help".into(),
             items: vec![MenuItem::action("About", ShowAbout)],
+            disabled: false,
+        },
+        Menu { // TODO: REMOVE IN RELEASE or add a flag
+            name: "Dev".into(),
+            items: vec![MenuItem::action("ToastDev", ToastDev)],
             disabled: false,
         },
     ]);
@@ -870,10 +876,60 @@ impl DMGTile {
                     .child(Self::corner_notch(bg_color, false, false, 2.0)),
             )
     }
+
+    pub fn set_toast(&mut self, message: String, is_error: bool, cx: &mut Context<Self>) {
+        self.toast = Some(Toast {
+            message,
+            is_error,
+            spawn_time: Instant::now(),
+        });
+        cx.notify();
+    }
+
+    fn render_toast(&mut self, window: &mut Window, cx: &mut Context<Self>) -> Option<impl IntoElement> {
+        let toast = self.toast.as_ref()?;
+
+        if toast.spawn_time.elapsed().as_secs_f32() > 3.0 {
+            self.toast = None;
+            return None;
+        }
+
+        cx.on_next_frame(window, move |_: &mut Self, _: &mut Window, cx: &mut Context<Self>| {
+            cx.notify();
+        });
+
+
+        let text_color = if toast.is_error {
+            rgb(0xFF5555)
+        } else {
+            rgb(0x88C070)
+        };
+
+        let bg_color = rgb(0x08171C);
+        let border_color = text_color;
+
+        Some(
+            div()
+                .absolute()
+                .top(px(16.0))
+                .right(px(16.0))
+                .tab_index(100)
+                .p_3()
+                .bg(bg_color)
+                .border_2()
+                .border_color(border_color)
+                .text_color(text_color)
+                .child(toast.message.clone())
+                .child(Self::corner_notch(bg_color, true, true, 2.0))
+                .child(Self::corner_notch(bg_color, true, false, 2.0))
+                .child(Self::corner_notch(bg_color, false, true, 2.0))
+                .child(Self::corner_notch(bg_color, false, false, 2.0)),
+        )
+    }
 }
 
 impl Render for DMGTile {
-    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let bg_color = rgb(0x08171c);
         let border_color = rgb(0x88C070);
 
@@ -972,6 +1028,10 @@ impl Render for DMGTile {
                                                         this.rotate_90_clockwise();
                                                         cx.notify();
                                                     }))
+                                                    .on_action(cx.listener(|this, _: &ToastDev, _, cx| {
+                                                        this.set_toast("Test Toast".to_string(), true, cx);
+                                                        cx.notify();
+                                                    }))
                                                     .on_key_down(cx.listener(|this, event: &KeyDownEvent, _, cx| {
                                                         if event.keystroke.key == "r" && !event.is_held {
                                                             this.rotate_90_clockwise();
@@ -1053,6 +1113,7 @@ impl Render for DMGTile {
                     .border_color(rgb(0x1a262c))
                     .child(self.render_tile_list(cx)),
             )
+            .children(self.render_toast(window, cx))
     }
 }
 
@@ -1083,6 +1144,9 @@ fn main() {
             KeyBinding::new("cmd-c", Copy, None),
             KeyBinding::new("cmd-x", Cut, None),
             KeyBinding::new("cmd-v", Paste, None),
+
+            // TODO: add flag or something
+            KeyBinding::new("cmd-t", ToastDev, None),
 
             KeyBinding::new("e", Eraser, Some("DMGTile")),
             KeyBinding::new("b", Brush, Some("DMGTile")),
