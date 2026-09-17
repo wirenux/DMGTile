@@ -622,6 +622,7 @@ impl DMGTile {
 
         div()
             .id("tile-list")
+            .w(px(80.0))
             .flex()
             .flex_col()
             .overflow_y_scroll()
@@ -637,9 +638,11 @@ impl DMGTile {
 
                 div()
                     .id(("tile-thumb", i))
+                    .w_full()
                     .flex()
+                    .flex_row()
                     .items_center()
-                    .justify_center()
+                    .gap_2()
                     .p_1()
                     .border_2()
                     .border_color(if selected { rgb(0x88C070) } else { rgba(0x00000000) })
@@ -650,12 +653,20 @@ impl DMGTile {
                     }))
                     .child(
                         div()
-                            .pt_1()
-                            .pr_2()
+                            .w(px(24.0))
+                            .flex()
+                            .justify_end()
                             .text_color(if selected { rgb(0xffffff) } else { rgb(0x88c070) })
                             .child(format!("{}", i))
                     )
-                    .child(img(image).w(thumb_size * 2.0).h(thumb_size * 2.0))
+                    .child(
+                        div()
+                            .flex()
+                            .items_center()
+                            .justify_center()
+                            .pr(px(16.0))
+                            .child(img(image).w(thumb_size * 2.0).h(thumb_size * 2.0))
+                    )
             }))
     }
 
