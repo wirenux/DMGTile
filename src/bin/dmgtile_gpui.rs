@@ -1074,9 +1074,16 @@ fn main() {
         cx.on_action(|_: &ShowAbout, _cx| { println!("About"); });
 
         cx.bind_keys([
-            KeyBinding::new("cmd-q", Quit, Some("DMGTile")),
-            KeyBinding::new("cmd-z", Undo, Some("DMGTile")),
-            KeyBinding::new("cmd-shift-z", Redo, Some("DMGTile")),
+            KeyBinding::new("cmd-q", Quit, None),
+            KeyBinding::new("cmd-n", NewFile, None),
+            KeyBinding::new("cmd-o", OpenFile, None),
+            KeyBinding::new("cmd-s", Save, None),
+            KeyBinding::new("cmd-z", Undo, None),
+            KeyBinding::new("cmd-shift-z", Redo, None),
+            KeyBinding::new("cmd-c", Copy, None),
+            KeyBinding::new("cmd-x", Cut, None),
+            KeyBinding::new("cmd-v", Paste, None),
+
             KeyBinding::new("e", Eraser, Some("DMGTile")),
             KeyBinding::new("b", Brush, Some("DMGTile")),
             KeyBinding::new("g", Bucket, Some("DMGTile")),
@@ -1084,9 +1091,6 @@ fn main() {
             KeyBinding::new("down", ShiftDown, Some("DMGTile")),
             KeyBinding::new("left", ShiftLeft, Some("DMGTile")),
             KeyBinding::new("right", ShiftRight, Some("DMGTile")),
-            KeyBinding::new("cmd-c", Copy, Some("DMGTile")),
-            KeyBinding::new("cmd-x", Cut, Some("DMGTile")),
-            KeyBinding::new("cmd-v", Paste, Some("DMGTile")),
         ]);
 
         set_app_menus(cx);
