@@ -26,7 +26,6 @@ const PIXEL: f32 = 2.0;
 const PREVIEW_PIXEL_SIZE: f32 = 12.0;
 const PATTERN_PIXEL_SIZE: f32 = 6.0;
 const PATTERN_REPEAT: usize = 4;
-const TILE_THUMB_PIXEL: f32 = 1.5;
 
 actions!(
     dmgtile,
@@ -651,7 +650,8 @@ impl DMGTile {
     }
 
     fn render_tile_list(&mut self, cx: &mut Context<Self>) -> impl IntoElement {
-        let thumb_size = px(GRID_SIZE as f32 * TILE_THUMB_PIXEL);
+        let row_height = px(40.0);
+        let thumb_size = px(24.0);
 
         uniform_list(
             "tile-list",
@@ -669,11 +669,12 @@ impl DMGTile {
                     div()
                         .id(("tile-thumb", i))
                         .w_full()
+                        .h(row_height)
                         .flex()
                         .flex_row()
                         .items_center()
                         .gap_2()
-                        .p_1()
+                        .px_1()
                         .border_2()
                         .border_color(if selected { rgb(0x88C070) } else { rgba(0x00000000) })
                         .cursor_pointer()
@@ -685,7 +686,8 @@ impl DMGTile {
                         }))
                         .child(
                             div()
-                                .w(px(24.0))
+                                .w(px(32.0))
+                                .flex_shrink_0()
                                 .flex()
                                 .justify_end()
                                 .text_color(if selected { rgb(0xffffff) } else { rgb(0x88c070) })
@@ -694,10 +696,10 @@ impl DMGTile {
                         .child(
                             div()
                                 .flex()
+                                .flex_shrink_0()
                                 .items_center()
                                 .justify_center()
-                                .pr(px(16.0))
-                                .child(img(image).w(thumb_size * 2.0).h(thumb_size * 2.0)),
+                                .child(img(image).w(thumb_size).h(thumb_size)),
                         )
                         .into_any_element()
                 }).collect()
@@ -1142,7 +1144,7 @@ impl Render for DMGTile {
                     .flex()
                     .flex_col()
                     .flex_shrink_0()
-                    .w(px(64.0))
+                    .w(px(80.0))
                     .h_full()
                     .bg(rgb(0x0c1418))
                     .border_l_1()
