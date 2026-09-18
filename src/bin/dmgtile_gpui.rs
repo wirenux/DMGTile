@@ -7,6 +7,7 @@ use std::borrow::Cow;
 use std::path::PathBuf;
 use std::time::Instant;
 use std::sync::Arc;
+use std::ops::Range;
 
 use image::Rgba as ImageRgba;
 
@@ -87,7 +88,7 @@ fn set_app_menus(cx: &mut App) {
             items: vec![MenuItem::action("About", ShowAbout)],
             disabled: false,
         },
-        Menu { // TODO: REMOVE IN RELEASE or add a flag
+        Menu {
             name: "Dev".into(),
             items: vec![MenuItem::action("ToastDev", ToastDev)],
             disabled: false,
@@ -97,7 +98,7 @@ fn set_app_menus(cx: &mut App) {
 
 #[derive(Clone)]
 struct TileImageCache {
-    key: ([u8; 64], Palette, u32),
+    key: ([u8; 64], Palette, u32, bool),
     image: Arc<RenderImage>,
 }
 
@@ -182,12 +183,13 @@ impl DMGTile {
         tile: [u8; 64],
         palette: Palette,
         pixel_scale: u32,
+        with_corners: bool,
     ) -> Arc<RenderImage> {
-        let key = (tile, palette, pixel_scale);
+        let key = (tile, palette, pixel_scale, with_corners);
         if let Some(existing) = cache && existing.key == key {
             return existing.image.clone();
         }
-        let image = Self::build_tile_render_image(tile, palette, pixel_scale);
+        let image = Self::build_tile_render_image(tile, palette, pixel_scale, with_corners);
         *cache = Some(TileImageCache { key, image: image.clone() });
         image
     }
@@ -215,7 +217,7 @@ impl DMGTile {
         let target_shade = self.tiles[self.current_tile][start_index];
 
         if target_shade == new_shade {
-            return false; // already the same shade
+            return false;
         }
 
         let mut stack = vec![start_index];
@@ -405,7 +407,7 @@ impl DMGTile {
             let scale = 4u32;
 
             for name in icons {
-                let full_path = format!("{}/assets/aseprite/gpui/{}", env!("CARGO_MANIFEST_DIR"), name); // TODO: Maybe change the folder when release build
+                let full_path = format!("{}/assets/aseprite/gpui/{}", env!("CARGO_MANIFEST_DIR"), name);
                 if let Ok(img_bytes) = std::fs::read(&full_path) && let Ok(decoded) = image::load_from_memory(&img_bytes) {
                     let rgba = decoded.to_rgba8();
                     let orig_w = rgba.width();
@@ -601,7 +603,12 @@ impl DMGTile {
         }
     }
 
-    fn build_tile_render_image(tile: [u8; 64], palette: Palette, pixel_scale: u32) -> Arc<RenderImage> {
+    fn build_tile_render_image(
+        tile: [u8; 64],
+        palette: Palette,
+        pixel_scale: u32,
+        with_corners: bool,
+    ) -> Arc<RenderImage> {
         let dim = GRID_SIZE as u32 * pixel_scale;
         let mut buffer = image::RgbaImage::new(dim, dim);
 
@@ -621,6 +628,24 @@ impl DMGTile {
             }
         }
 
+        if with_corners {
+            let bg_color = [0x08, 0x17, 0x1c, 0xff];
+            let corner_size = pixel_scale;
+            let corners = [
+                (0, 0),
+                (dim - corner_size, 0),
+                (0, dim - corner_size),
+                (dim - corner_size, dim - corner_size),
+            ];
+            for &(cx, cy) in &corners {
+                for dy in 0..corner_size {
+                    for dx in 0..corner_size {
+                        buffer.put_pixel(cx + dx, cy + dy, ImageRgba(bg_color));
+                    }
+                }
+            }
+        }
+
         let frame = image::Frame::new(buffer);
         Arc::new(RenderImage::new(vec![frame]))
     }
@@ -628,54 +653,61 @@ impl DMGTile {
     fn render_tile_list(&mut self, cx: &mut Context<Self>) -> impl IntoElement {
         let thumb_size = px(GRID_SIZE as f32 * TILE_THUMB_PIXEL);
 
-        div()
-            .id("tile-list")
-            .w(px(80.0))
-            .flex()
-            .flex_col()
-            .overflow_y_scroll()
-            .bg(rgb(0x08171C))
-            .children((0..MAX_TILES).map(|i| {
-                let selected = self.current_tile == i;
-                let image = Self::get_or_build_tile_image(
-                    &mut self.tile_thumb_cache[i],
-                    self.tiles[i],
-                    self.palette,
-                    2,
-                );
-
-                div()
-                    .id(("tile-thumb", i))
-                    .w_full()
-                    .flex()
-                    .flex_row()
-                    .items_center()
-                    .gap_2()
-                    .p_1()
-                    .border_2()
-                    .border_color(if selected { rgb(0x88C070) } else { rgba(0x00000000) })
-                    .cursor_pointer()
-                    .on_mouse_down(MouseButton::Left, cx.listener(move |this, _, _, cx| {
-                        this.current_tile = i;
-                        cx.notify();
-                    }))
-                    .child(
-                        div()
-                            .w(px(24.0))
-                            .flex()
-                            .justify_end()
-                            .text_color(if selected { rgb(0xffffff) } else { rgb(0x88c070) })
-                            .child(format!("{}", i))
-                    )
-                    .child(
-                        div()
-                            .flex()
-                            .items_center()
-                            .justify_center()
-                            .pr(px(16.0))
-                            .child(img(image).w(thumb_size * 2.0).h(thumb_size * 2.0))
-                    )
-            }))
+        uniform_list(
+            "tile-list",
+            MAX_TILES,
+            cx.processor(move |this, range: Range<usize>, _window, cx| {
+                range.map(|i| {
+                    let selected = this.current_tile == i;
+                    let image = Self::get_or_build_tile_image(
+                        &mut this.tile_thumb_cache[i],
+                        this.tiles[i],
+                        this.palette,
+                        2,
+                        false, // w/o corners
+                    );
+                    div()
+                        .id(("tile-thumb", i))
+                        .w_full()
+                        .flex()
+                        .flex_row()
+                        .items_center()
+                        .gap_2()
+                        .p_1()
+                        .border_2()
+                        .border_color(if selected { rgb(0x88C070) } else { rgba(0x00000000) })
+                        .cursor_pointer()
+                        .on_mouse_down(MouseButton::Left, cx.listener(move |this, _, _, cx| {
+                            if this.current_tile != i {
+                                this.current_tile = i;
+                                cx.notify();
+                            }
+                        }))
+                        .child(
+                            div()
+                                .w(px(24.0))
+                                .flex()
+                                .justify_end()
+                                .text_color(if selected { rgb(0xffffff) } else { rgb(0x88c070) })
+                                .child(format!("{}", i)),
+                        )
+                        .child(
+                            div()
+                                .flex()
+                                .items_center()
+                                .justify_center()
+                                .pr(px(16.0))
+                                .child(img(image).w(thumb_size * 2.0).h(thumb_size * 2.0)),
+                        )
+                        .into_any_element()
+                }).collect()
+            }),
+        )
+        .w(px(80.0))
+        .h_full()
+        .flex()
+        .flex_col()
+        .bg(rgb(0x08171C))
     }
 
     fn render_status_bar(&self, cx: &mut Context<Self>) -> impl IntoElement {
@@ -815,6 +847,7 @@ impl DMGTile {
             self.tiles[self.current_tile],
             self.palette,
             PATTERN_PIXEL_SIZE as u32,
+            false,
         );
 
         div()
@@ -841,6 +874,7 @@ impl DMGTile {
             self.tiles[self.current_tile],
             self.palette,
             PREVIEW_PIXEL_SIZE as u32,
+            false,
         );
 
         div()
@@ -1147,7 +1181,6 @@ fn main() {
             KeyBinding::new("cmd-x", Cut, None),
             KeyBinding::new("cmd-v", Paste, None),
 
-            // TODO: add flag or something
             KeyBinding::new("cmd-t", ToastDev, None),
 
             KeyBinding::new("e", Eraser, Some("DMGTile")),
@@ -1169,7 +1202,7 @@ fn main() {
                     cx,
                 ))),
 
-                window_min_size: Some(size(px(400.0), px(300.0))),
+                window_min_size: Some(size(px(750.0), px(525.0))),
 
                 titlebar: Some(TitlebarOptions {
                     title: Some("DMGTile".into()),
