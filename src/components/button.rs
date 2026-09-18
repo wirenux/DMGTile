@@ -1,26 +1,6 @@
 use gpui::*;
-use gpui::prelude::FluentBuilder;
 
-const PIXEL: f32 = 2.0;
-
-fn notch(color: Rgba, w: f32, h: f32, top: bool, left: bool) -> impl IntoElement {
-    div()
-        .absolute()
-        .w(px(w))
-        .h(px(h))
-        .bg(color)
-        .when(top, |s| s.top(px(0.)))
-        .when(!top, |s| s.bottom(px(0.)))
-        .when(left, |s| s.left(px(0.)))
-        .when(!left, |s| s.right(px(0.)))
-}
-
-fn staircase_corner(color: Rgba, top: bool, left: bool) -> [AnyElement; 2] {
-    [
-        notch(color, PIXEL * 2.0, PIXEL, top, left).into_any_element(),
-        notch(color, PIXEL, PIXEL * 2.0, top, left).into_any_element(),
-    ]
-}
+use super::notch::staircase_corner;
 
 pub fn gameboy_button<V: Render>(
     id: &'static str,

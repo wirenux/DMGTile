@@ -19,7 +19,3 @@ gpui_platform = { git = "https://github.com/zed-industries/zed", rev = "20d3cd1"
 name = "DMGTile"
 identifier = "com.wirenux.dmgtile"
 icon = ["assets/macos/AppIcon.icns", "assets/default_512.png"]
-
-[[bin]]
-name = "DMGTile"
-path = "src/bin/dmgtile_gpui.rs"
