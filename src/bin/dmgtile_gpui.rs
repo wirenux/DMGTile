@@ -478,6 +478,10 @@ impl DMGTile {
                 img(icon_image)
                     .size(px(44.0))
             )
+            .child(Self::corner_notch(behind_bg, true, true, 2.0))
+            .child(Self::corner_notch(behind_bg, true, false, 2.0))
+            .child(Self::corner_notch(behind_bg, false, true, 2.0))
+            .child(Self::corner_notch(behind_bg, false, false, 2.0))
     }
 
     fn render_toolbar(&mut self, cx: &mut Context<Self>) -> impl IntoElement {
@@ -705,6 +709,10 @@ impl DMGTile {
                                     .text_color(if shade <= 1 { rgb(0x000000) } else { rgb(0xffffff) })
                                     .child(shade.to_string()),
                             )
+                            .child(Self::corner_notch(rgb(0x1a1a1a), true, true, 1.0))
+                            .child(Self::corner_notch(rgb(0x1a1a1a), true, false, 1.0))
+                            .child(Self::corner_notch(rgb(0x1a1a1a), false, true, 1.0))
+                            .child(Self::corner_notch(rgb(0x1a1a1a), false, false, 1.0))
                     ),
             )
             .child(div().w(px(1.0)).h(px(20.0)).bg(rgb(0x323232)))
@@ -741,6 +749,12 @@ impl DMGTile {
                                 cx.notify();
                             }))
                             .child(div().text_color(text_color).child(s.to_string()))
+                            .when(!selected, |el| {
+                                el.child(Self::corner_notch(behind_bg, true, true, 1.0))
+                                    .child(Self::corner_notch(behind_bg, true, false, 1.0))
+                                    .child(Self::corner_notch(behind_bg, false, true, 1.0))
+                                    .child(Self::corner_notch(behind_bg, false, false, 1.0))
+                            })
                     }))
             )
             .child(div().w(px(1.0)).h(px(20.0)).bg(rgb(0x323232)))
@@ -844,7 +858,10 @@ impl DMGTile {
                             .border_color(border_color)
                             .child(img(preview_image).w(preview_size).h(preview_size)),
                     )
-                    
+                    .child(Self::corner_notch(bg_color, true, true, 2.0))
+                    .child(Self::corner_notch(bg_color, true, false, 2.0))
+                    .child(Self::corner_notch(bg_color, false, true, 2.0))
+                    .child(Self::corner_notch(bg_color, false, false, 2.0)),
             )
             .child(
                 div()
@@ -855,7 +872,10 @@ impl DMGTile {
                             .border_color(border_color)
                             .child(self.render_pattern_chunk()),
                     )
-                    
+                    .child(Self::corner_notch(bg_color, true, true, 2.0))
+                    .child(Self::corner_notch(bg_color, true, false, 2.0))
+                    .child(Self::corner_notch(bg_color, false, true, 2.0))
+                    .child(Self::corner_notch(bg_color, false, false, 2.0)),
             )
     }
 
@@ -902,7 +922,10 @@ impl DMGTile {
                 .border_color(border_color)
                 .text_color(text_color)
                 .child(toast.message.clone())
-                
+                .child(Self::corner_notch(bg_color, true, true, 2.0))
+                .child(Self::corner_notch(bg_color, true, false, 2.0))
+                .child(Self::corner_notch(bg_color, false, true, 2.0))
+                .child(Self::corner_notch(bg_color, false, false, 2.0)),
         )
     }
 }
@@ -1064,7 +1087,10 @@ impl Render for DMGTile {
                                                     })),
                                             ),
                                     )
-                                    
+                                    .child(Self::corner_notch(bg_color, true, true, 2.0))
+                                    .child(Self::corner_notch(bg_color, true, false, 2.0))
+                                    .child(Self::corner_notch(bg_color, false, true, 2.0))
+                                    .child(Self::corner_notch(bg_color, false, false, 2.0)),
                             )
                             .child(
                                 div()
