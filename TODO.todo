@@ -22,3 +22,4 @@
 - [ ] Maybe run a cargo update / change `rev="xxxxxxx"` in the `Cargo.toml`
 - [ ] Optimize the app (like the egui one) (try on a weak laptop to see if this run nicely)
 - [ ] Change `gpui-migration` to `main` & (old) `main` to `egui`
+- [ ] Custom DMGTile `.dmg` background
