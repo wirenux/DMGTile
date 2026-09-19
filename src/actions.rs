@@ -7,6 +7,7 @@ actions!(
         NewFile,
         OpenFile,
         Save,
+        SaveAs,
         Undo,
         Redo,
         Copy,
@@ -43,9 +44,13 @@ pub fn set_app_menus(cx: &mut App) {
         Menu {
             name: "File".into(),
             items: vec![
-                MenuItem::action("New", NewFile),
-                MenuItem::action("Open", OpenFile),
-                MenuItem::action("Save", Save),
+                MenuItem::action("New Project...", NewFile),
+                MenuItem::action("Open Project...", OpenFile),
+
+                MenuItem::separator(),
+
+                MenuItem::action("Save Project", Save),
+                MenuItem::action("Save Project As...", SaveAs),
             ],
             disabled: false,
         },

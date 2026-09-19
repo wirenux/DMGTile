@@ -3,7 +3,7 @@ use std::fs;
 use std::io;
 use std::path::Path;
 
-const MAX_TILES: usize = 128;
+use crate::dmgtile::MAX_TILES;
 
 #[derive(Serialize, Deserialize)]
 pub struct TileEntry {
@@ -30,7 +30,6 @@ pub fn save_to_file<P: AsRef<Path>>(tiles: &[[u8; 64]], modified: &[bool], path:
     fs::write(path, json)
 }
 
-
 pub fn load_from_file<P: AsRef<Path>>(path: P) -> io::Result<(Vec<[u8; 64]>, Vec<bool>)> {
     let json = fs::read_to_string(path)?;
     let project: TileProject = serde_json::from_str(&json)
@@ -42,7 +41,10 @@ pub fn load_from_file<P: AsRef<Path>>(path: P) -> io::Result<(Vec<[u8; 64]>, Vec
     for entry in project.tiles {
         if entry.id < tiles.len() {
             let arr: [u8; 64] = entry.pixels.try_into().map_err(|v: Vec<u8>| {
-                io::Error::new(io::ErrorKind::InvalidData, format!("tile {} has {} pixels, expected 64", entry.id, v.len()))
+                io::Error::new(
+                    io::ErrorKind::InvalidData,
+                    format!("tile {} has {} pixels, expected 64", entry.id, v.len()),
+                )
             })?;
             tiles[entry.id] = arr;
             modified[entry.id] = true;

@@ -3,11 +3,12 @@ use gpui::prelude::FluentBuilder;
 use std::path::PathBuf;
 use std::time::Instant;
 
-use crate::actions::{
-    Brush, Bucket, Copy, Cut, EraseTile, Eraser, FlipH, FlipV, Paste, Redo, Rotate, ShiftDown, ShiftLeft, ShiftRight, ShiftUp, ToastDev, ToastShiftDev, Undo,
+use crate::actions::{Brush, Bucket, Copy, Cut, Eraser, FlipH, FlipV, NewFile, OpenFile, Paste,
+    Redo, Rotate, Save, SaveAs, ShiftDown, ShiftLeft, ShiftRight, ShiftUp, ToastDev, ToastShiftDev, Undo, EraseTile
 };
 use crate::images::TileImageCache;
 use crate::palette::{shade_color, Palette};
+use crate::project;
 use crate::tools::{Snapshot, Tool};
 use crate::components::corner_notch;
 
@@ -176,6 +177,10 @@ impl Render for DMGTile {
                                                         this.erase_tile();
                                                         cx.notify();
                                                     }))
+                                                    .on_action(cx.listener(|this, _: &NewFile, _, cx| this.new_project(cx)))
+                                                    .on_action(cx.listener(|this, _: &OpenFile, _, cx| this.open_project(cx)))
+                                                    .on_action(cx.listener(|this, _: &Save, _, cx| this.save_project(cx)))
+                                                    .on_action(cx.listener(|this, _: &SaveAs, _, cx| this.save_project_as(cx)))
                                                     .when(self.dev_mode, |el| {
                                                         el.on_action(cx.listener(|this, _: &ToastDev, _, cx| {
                                                             this.set_toast("Test Toast".to_string(), true, cx);

@@ -7,6 +7,8 @@ mod dmgtile;
 mod images;
 mod palette;
 mod panels;
+mod project;
+mod project_io;
 mod tools;
 
 use actions::{
