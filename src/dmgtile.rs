@@ -1,10 +1,10 @@
 use gpui::*;
+use gpui::prelude::FluentBuilder;
 use std::path::PathBuf;
 use std::time::Instant;
 
 use crate::actions::{
-    Brush, Bucket, Copy, Cut, Eraser, FlipH, FlipV, Paste, Redo, Rotate, ShiftDown, ShiftLeft,
-    ShiftRight, ShiftUp, ToastDev, ToastShiftDev, Undo,
+    Brush, Bucket, Copy, Cut, EraseTile, Eraser, FlipH, FlipV, Paste, Redo, Rotate, ShiftDown, ShiftLeft, ShiftRight, ShiftUp, ToastDev, ToastShiftDev, Undo,
 };
 use crate::images::TileImageCache;
 use crate::palette::{shade_color, Palette};
@@ -172,14 +172,20 @@ impl Render for DMGTile {
                                                         this.rotate_90_clockwise();
                                                         cx.notify();
                                                     }))
-                                                    .on_action(cx.listener(|this, _: &ToastDev, _, cx| {
-                                                        this.set_toast("Test Toast".to_string(), true, cx);
+                                                    .on_action(cx.listener(|this, _: &EraseTile, _, cx| {
+                                                        this.erase_tile();
                                                         cx.notify();
                                                     }))
-                                                    .on_action(cx.listener(|this, _: &ToastShiftDev, _, cx| {
-                                                        this.set_toast("Test Toast Shift".to_string(), false, cx);
-                                                        cx.notify();
-                                                    }))
+                                                    .when(self.dev_mode, |el| {
+                                                        el.on_action(cx.listener(|this, _: &ToastDev, _, cx| {
+                                                            this.set_toast("Test Toast".to_string(), true, cx);
+                                                            cx.notify();
+                                                        }))
+                                                        .on_action(cx.listener(|this, _: &ToastShiftDev, _, cx| {
+                                                            this.set_toast("Test Toast Shift".to_string(), false, cx);
+                                                            cx.notify();
+                                                        }))
+                                                    })
                                                     .on_key_down(cx.listener(|this, event: &KeyDownEvent, _, cx| {
                                                         if event.keystroke.key == "r" && !event.is_held {
                                                             this.rotate_90_clockwise();

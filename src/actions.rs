@@ -25,11 +25,12 @@ actions!(
         Rotate,
         ToastDev,
         ToastShiftDev,
+        EraseTile,
     ]
 );
 
 pub fn set_app_menus(cx: &mut App) {
-    cx.set_menus(vec![
+    let mut menus = vec![
         Menu {
             name: "DMGTile".into(),
             items: vec![
@@ -53,6 +54,8 @@ pub fn set_app_menus(cx: &mut App) {
             items: vec![
                 MenuItem::action("Undo", Undo),
                 MenuItem::action("Redo", Redo),
+                MenuItem::separator(),
+                MenuItem::action("Erase Current Tile", EraseTile),
             ],
             disabled: false,
         },
@@ -61,13 +64,18 @@ pub fn set_app_menus(cx: &mut App) {
             items: vec![MenuItem::action("About", ShowAbout)],
             disabled: false,
         },
-        Menu { // TODO: Remove it before Release (or add a flag)
+    ];
+
+    if std::env::args().any(|arg| arg == "--dev") {
+        menus.push(Menu {
             name: "Dev".into(),
             items: vec![
                 MenuItem::action("ToastDev", ToastDev),
                 MenuItem::action("ToastShiftDev", ToastShiftDev),
             ],
             disabled: false,
-        },
-    ]);
+        });
+    }
+
+    cx.set_menus(menus);
 }

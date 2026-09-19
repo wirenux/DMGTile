@@ -16,6 +16,8 @@ use actions::{
 };
 use dmgtile::DMGTile;
 
+use crate::actions::EraseTile;
+
 fn main() {
     Application::with_platform(gpui_platform::current_platform(false)).run(|cx: &mut App| {
         cx.activate(true);
@@ -43,8 +45,8 @@ fn main() {
             KeyBinding::new("cmd-c", Copy, None),
             KeyBinding::new("cmd-x", Cut, None),
             KeyBinding::new("cmd-v", Paste, None),
+            KeyBinding::new("cmd-backspace", EraseTile, None),
 
-            // TODO: add flag or something
             KeyBinding::new("cmd-t", ToastDev, None),
             KeyBinding::new("cmd-shift-t", ToastShiftDev, None),
 

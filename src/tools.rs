@@ -231,4 +231,9 @@ impl DMGTile {
             self.modified = next.modified;
         }
     }
+
+    pub fn erase_tile(&mut self) {
+        self.push_undo();
+        self.tiles[self.current_tile] = [0u8; 64];
+    }
 }
