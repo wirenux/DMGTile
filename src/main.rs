@@ -32,10 +32,6 @@ fn main() {
             .expect("Failed to load custom font");
 
         cx.on_action(|_: &Quit, cx| { cx.quit(); });
-        cx.on_action(|_: &NewFile, _cx| { println!("New"); });
-        cx.on_action(|_: &OpenFile, _cx| { println!("Open"); });
-        cx.on_action(|_: &Save, _cx| { println!("Save"); });
-        cx.on_action(|_: &ShowAbout, _cx| { println!("About"); });
 
         cx.bind_keys([
             KeyBinding::new("cmd-q", Quit, None),
