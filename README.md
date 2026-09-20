@@ -33,10 +33,10 @@
 - [Development](#development)
   - [Dependencies](#dependencies)
   - [Building DMGTile from source](#building-dmgtile-from-source)
-  - [Cross-compiling](#cross-compiling)
 - [Boring Stuff](#boring-stuff)
   - [Use of AI](#use-of-ai)
   - [Credits](#credits)
+  - [Platform notes](#platform-notes)
   - [License](#license)
 
 
@@ -74,6 +74,7 @@ The idea for this project came from [GBTD (Gameboy Tile Designer)](https://www.d
 * **Bucket Fill**: A classic flood-fill tool
 * **Transform Tools**: You can flip, rotate, move the active tile
 * **Live Previews**: A little 4x4 grid to preview the active tile in a pattern (e.g: a background)
+* **Virtualized Tile List**: Only the visible tiles in the sidebar are rendered each frame
 * **Cached Texture Rendering**: Tile textures are cached and only rebuilt when a tile is modified
 
 ### Project Management
@@ -87,7 +88,7 @@ The idea for this project came from [GBTD (Gameboy Tile Designer)](https://www.d
 ### Export
 
 * **`.bin` Export**: Exports all the modified tiles into the Gameboy's native 2bpp format
-* **`.c` Export**: Exports all the modified tiles as a C array, with configurable array name (Can be used with [GBDK](https://gbdk.org))
+* **`.c` Export**: Exports all the modified tiles as a C array, with the array name derived from the filename (Can be used with [GBDK](https://gbdk.org))
 * **Selective export**: Only the modified tiles are written out
 
 ## Built with...
@@ -139,17 +140,6 @@ cd DMGTile
 cargo run
 ```
 
-### Cross-compiling
-
-DMGTile ships a `Makefile` using [`cross`](https://github.com/cross-rs/cross) to build for Windows and Linux from macOS:
-
-```bash
-make windows
-make linux
-make mac-intel
-make # this is the one for M-series mac
-```
-
 ## Boring Stuff
 
 ### Use of AI
@@ -163,6 +153,11 @@ This project is created by [@wirenux](https://github.com/wirenux) in [Rust](http
 
 
 Logo by [@wirenux](https://github.com/wirenux)
+
+### Platform notes
+
+* **macOS**: uses the native menu bar (like any Mac app)
+* **Windows / Linux**: shows an in-window menu bar at the top of the editor
 
 ### License
 
