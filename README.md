@@ -156,7 +156,7 @@ Logo by [@wirenux](https://github.com/wirenux)
 
 ### Platform notes
 
-* **macOS**: uses the native menu bar (like any Mac app)
+* **macOS**: uses the native menu bar
 * **Windows / Linux**: shows an in-window menu bar at the top of the editor
 
 ### License
