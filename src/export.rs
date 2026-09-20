@@ -1,7 +1,6 @@
 use std::fs::File;
 use std::io::{self, Write};
 use std::path::Path;
-use std::result;
 
 pub fn pixels_to_2bpp(pixels: &[u8; 64]) -> [u8; 16] {
     let mut result_bytes = [0u8; 16];

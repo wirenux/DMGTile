@@ -1,5 +1,6 @@
 use gpui::*;
 use gpui::prelude::FluentBuilder;
+use gpui_component::menu::AppMenuBar;
 use std::path::PathBuf;
 use std::time::Instant;
 
@@ -84,6 +85,9 @@ impl Render for DMGTile {
             .flex_row()
             .font_family("Pixter-Display")
             .bg(bg_color)
+            .when(cfg!(not(target_os = "macos")), |el| {
+                el.child(AppMenuBar::new(&mut *cx))
+            })
             .child(
                 div()
                     .flex()
