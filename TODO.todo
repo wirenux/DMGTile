@@ -21,6 +21,6 @@
 - [x] Remplace dmgtile_gpui.rs to main.rs (at the end before modifing icon path)
 - [x] Maybe run a cargo update / change `rev="xxxxxxx"` in the `Cargo.toml`
 - [x] Optimize the app (like the egui one) (try on a weak laptop to see if this run nicely)
-- [ ] Change `gpui-migration` to `main` & (old) `main` to `egui`
+- [x] Change `gpui-migration` to `main` & (old) `main` to `egui`
 - [-] Custom DMGTile `.dmg` background
 - [x] Change all the screenshot
