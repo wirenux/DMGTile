@@ -105,7 +105,7 @@ impl DMGTile {
         }
 
         let Some(path) = rfd::FileDialog::new()
-            .add_filter("C Soruce", &["c"])
+            .add_filter("C Source", &["c"])
             .set_file_name("tile.c")
             .save_file()
         else {
