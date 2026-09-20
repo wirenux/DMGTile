@@ -12,14 +12,15 @@
 - [x] Redo button
 - [?] Write a little manual
 
-- [ ] Add `features = ["wayland", "x11"]` to `gpui_platform` in `Cargo.toml`
+- [x] Add `features = ["wayland", "x11"]` to `gpui_platform` in `Cargo.toml`
 
 - [x] Add copy/paste + undo / redo on the copy
 - [x] Add cut
 - [ ] Add submission to awesome-gpui (with a pr)
-- [ ] Modify icon path in the final release
+- [?] Modify icon path in the final release
 - [x] Remplace dmgtile_gpui.rs to main.rs (at the end before modifing icon path)
-- [ ] Maybe run a cargo update / change `rev="xxxxxxx"` in the `Cargo.toml`
-- [ ] Optimize the app (like the egui one) (try on a weak laptop to see if this run nicely)
+- [x] Maybe run a cargo update / change `rev="xxxxxxx"` in the `Cargo.toml`
+- [x] Optimize the app (like the egui one) (try on a weak laptop to see if this run nicely)
 - [ ] Change `gpui-migration` to `main` & (old) `main` to `egui`
-- [ ] Custom DMGTile `.dmg` background
+- [-] Custom DMGTile `.dmg` background
+- [x] Change all the screenshot

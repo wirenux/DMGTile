@@ -16,6 +16,9 @@
 
 ---
 
+> [!NOTE]
+> A computer with a dedicated GPU is recommended
+
 ## Table of Content
 - [Table of Content](#table-of-content)
 - [Why DMGTile even exist ( °ヮ° ) ?](#why-dmgtile-even-exist--ヮ--)
@@ -50,15 +53,15 @@ The idea for this project came from [GBTD (Gameboy Tile Designer)](https://www.d
       <sub><b>Tile Editor</b></sub>
     </td>
     <td colspan="4" align="center">
-      <img src="assets/export.png" width="512px"/><br>
-      <sub><b>Export</b></sub>
+      <img src="assets/macos.png" width="512px"/><br>
+      <sub><b>MacOS Integration</b></sub>
     </td>
   </tr>
 
   <tr>
     <td colspan="2" align="center">
-      <img src="assets/emulator.webp" width="350px"/><br>
-      <sub><b>Emulator</b></sub>
+      <img src="assets/top-menu.png" width="256px"/><br>
+      <sub><b>File Menu (Only on Linux and Windows)</b></sub>
     </td>
   </tr>
 </table>
@@ -92,7 +95,7 @@ The idea for this project came from [GBTD (Gameboy Tile Designer)](https://www.d
 This project was built to help me learn Rust while creating a usefull Application. Here is what I have used:
 
 * [Rust](https://rust-lang.org/): for the whole app! `ദ്ദി(˵ •̀ ᴗ - ˵ ) ✧`
-* [`eframe` / `egui`](https://github.com/emilk/egui): for the cross-platform UI
+* [`gpui`](https://gpui.rs): for the cross-platform UI
 * [`serde`](https://serde.rs/) + [`serde_json`](https://docs.rs/serde_json/): for the `.dmgtile` file
 * [`rfd`](https://github.com/PolyMeilex/rfd): for native file dialogs
 
@@ -117,7 +120,7 @@ On [Stardance](https://stardance.hackclub.com/) you can watch the full developme
 
 ### Dependencies
 
-* [`eframe` / `egui`](https://github.com/emilk/egui)
+* [`gpui`](https://gpui.rs)
 * [`serde`](https://serde.rs/) / [`serde_json`](https://docs.rs/serde_json/)
 * [`rfd`](https://github.com/PolyMeilex/rfd)
 
@@ -156,7 +159,7 @@ make # this is the one for M-series mac
 
 ### Credits
 
-This project is created by [@wirenux](https://github.com/wirenux) in [Rust](https://rust-lang.org/), using [egui](https://github.com/emilk/egui).
+This project is created by [@wirenux](https://github.com/wirenux) in [Rust](https://rust-lang.org/), using [gpui](https://gpui.rs).
 
 
 Logo by [@wirenux](https://github.com/wirenux)
