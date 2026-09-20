@@ -113,7 +113,7 @@ impl DMGTile {
                         div()
                             .size(px(20.0))
                             .relative()
-                            .pt(px(2.0))
+                            .when(!cfg!(target_os = "windows"), |el| el.pt(px(2.0)))
                             .bg(active_shade_color)
                             .flex()
                             .items_center()
