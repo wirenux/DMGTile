@@ -4,6 +4,7 @@ use std::borrow::Cow;
 mod actions;
 mod components;
 mod dmgtile;
+mod export;
 mod images;
 mod palette;
 mod panels;
@@ -13,7 +14,7 @@ mod tools;
 
 use actions::{
     set_app_menus, Brush, Bucket, Copy, Cut, Eraser, NewFile, OpenFile, Paste,
-    Quit, Redo, Save, ShiftDown, ShiftLeft, ShiftRight, ShiftUp, ShowAbout, ToastDev, ToastShiftDev,
+    Quit, Redo, Save, ShiftDown, ShiftLeft, ShiftRight, ShiftUp, ToastDev, ToastShiftDev, OpenGithub, OpenStardance,
     Undo,
 };
 use dmgtile::DMGTile;
@@ -32,6 +33,12 @@ fn main() {
             .expect("Failed to load custom font");
 
         cx.on_action(|_: &Quit, cx| { cx.quit(); });
+        cx.on_action(|_: &OpenGithub, cx| {
+            cx.open_url("https://github.com/wirenux/DMGTile");
+        });
+        cx.on_action(|_: &OpenStardance, cx| {
+            cx.open_url("https://stardance.hackclub.com/projects/54773");
+        });
 
         cx.bind_keys([
             KeyBinding::new("cmd-q", Quit, None),

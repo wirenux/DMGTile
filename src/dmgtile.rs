@@ -4,11 +4,10 @@ use std::path::PathBuf;
 use std::time::Instant;
 
 use crate::actions::{Brush, Bucket, Copy, Cut, Eraser, FlipH, FlipV, NewFile, OpenFile, Paste,
-    Redo, Rotate, Save, SaveAs, ShiftDown, ShiftLeft, ShiftRight, ShiftUp, ToastDev, ToastShiftDev, Undo, EraseTile
+    Redo, Rotate, Save, SaveAs, ShiftDown, ShiftLeft, ShiftRight, ShiftUp, ToastDev, ToastShiftDev, Undo, EraseTile, ExportC, ExportBin
 };
 use crate::images::TileImageCache;
 use crate::palette::{shade_color, Palette};
-use crate::project;
 use crate::tools::{Snapshot, Tool};
 use crate::components::corner_notch;
 
@@ -176,11 +175,14 @@ impl Render for DMGTile {
                                                     .on_action(cx.listener(|this, _: &EraseTile, _, cx| {
                                                         this.erase_tile();
                                                         cx.notify();
+                                                        this.set_toast("Tile Erased".to_string(), false, cx);
                                                     }))
                                                     .on_action(cx.listener(|this, _: &NewFile, _, cx| this.new_project(cx)))
                                                     .on_action(cx.listener(|this, _: &OpenFile, _, cx| this.open_project(cx)))
                                                     .on_action(cx.listener(|this, _: &Save, _, cx| this.save_project(cx)))
                                                     .on_action(cx.listener(|this, _: &SaveAs, _, cx| this.save_project_as(cx)))
+                                                    .on_action(cx.listener(|this, _: &ExportBin, _, cx| this.export_bin(cx)))
+                                                    .on_action(cx.listener(|this, _: &ExportC, _, cx| this.export_c(cx)))
                                                     .when(self.dev_mode, |el| {
                                                         el.on_action(cx.listener(|this, _: &ToastDev, _, cx| {
                                                             this.set_toast("Test Toast".to_string(), true, cx);

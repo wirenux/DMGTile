@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use std::vec;
 
 use crate::dmgtile::{DMGTile, MAX_TILES};
-use crate::project;
+use crate::{export, project};
 
 impl DMGTile {
     pub fn new_project(&mut self, cx: &mut Context<Self>) {
@@ -73,6 +73,54 @@ impl DMGTile {
             Err(e) => {
                 self.set_toast(format!("Failed to save: {}", e), true, cx);
             }
+        }
+    }
+
+    // Export
+
+    pub fn export_bin(&mut self, cx: &mut Context<Self>) {
+        if !self.modified.iter().any(|&m| m) {
+            self.set_toast("Nothing to export".to_string(), true, cx);
+            return;
+        }
+
+        let Some(path) = rfd::FileDialog::new()
+            .add_filter("GameBoy Tile Binary", &["bin"])
+            .set_file_name("tile.bin")
+            .save_file()
+        else {
+            return;
+        };
+
+        match export::export_to_bin(&self.tiles, &self.modified, &path) {
+            Ok(()) => self.set_toast(format!("Exported {}", path.display()), false, cx),
+            Err(e) => self.set_toast(format!("Export failed: {}", e), true, cx),
+        }
+    }
+
+    pub fn export_c(&mut self, cx: &mut Context<Self>) {
+        if !self.modified.iter().any(|&m| m) {
+            self.set_toast("Nothing to export".to_string(), true, cx);
+            return;
+        }
+
+        let Some(path) = rfd::FileDialog::new()
+            .add_filter("C Soruce", &["c"])
+            .set_file_name("tile.c")
+            .save_file()
+        else {
+            return;
+        };
+
+        let name = path
+            .file_stem()
+            .and_then(|s| s.to_str())
+            .map(export::sanitize_c_ident)
+            .unwrap_or_else(|| "tiles".to_string());
+
+        match export::export_to_c(&self.tiles, &self.modified, &name, &path) {
+            Ok(()) => self.set_toast(format!("Exported {}", path.display()), false, cx),
+            Err(e) => self.set_toast(format!("Export failed: {}", e), true, cx),
         }
     }
 }

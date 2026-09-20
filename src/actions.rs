@@ -13,7 +13,6 @@ actions!(
         Copy,
         Paste,
         Cut,
-        ShowAbout,
         Eraser,
         Brush,
         Bucket,
@@ -27,6 +26,10 @@ actions!(
         ToastDev,
         ToastShiftDev,
         EraseTile,
+        ExportBin,
+        ExportC,
+        OpenGithub,
+        OpenStardance,
     ]
 );
 
@@ -35,7 +38,7 @@ pub fn set_app_menus(cx: &mut App) {
         Menu {
             name: "DMGTile".into(),
             items: vec![
-                MenuItem::action("About DMGTile", ShowAbout),
+                MenuItem::action("About DMGTile", OpenGithub),
                 MenuItem::separator(),
                 MenuItem::action("Quit", Quit),
             ],
@@ -51,6 +54,11 @@ pub fn set_app_menus(cx: &mut App) {
 
                 MenuItem::action("Save Project", Save),
                 MenuItem::action("Save Project As...", SaveAs),
+
+                MenuItem::separator(),
+
+                MenuItem::action("Export as .bin ...", ExportBin),
+                MenuItem::action("Export as .c ...", ExportC),
             ],
             disabled: false,
         },
@@ -66,7 +74,10 @@ pub fn set_app_menus(cx: &mut App) {
         },
         Menu {
             name: "Help".into(),
-            items: vec![MenuItem::action("About", ShowAbout)],
+            items: vec![
+                MenuItem::action("GitHub", OpenGithub),
+                MenuItem::action("Stardance", OpenStardance),
+            ],
             disabled: false,
         },
     ];

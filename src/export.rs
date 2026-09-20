@@ -1,108 +1,7 @@
-use eframe::egui;
 use std::fs::File;
 use std::io::{self, Write};
 use std::path::Path;
-
-#[derive(PartialEq, Clone, Copy)]
-pub enum ExportFormat {
-    Bin,
-    C,
-}
-
-pub struct ExportWindow {
-    pub open: bool,
-    file_name: String,
-    label_name: String,
-    format: ExportFormat,
-}
-
-impl Default for ExportWindow {
-    fn default() -> Self {
-        Self {
-            open: false,
-            file_name: "tile".to_string(),
-            label_name: "TileLabel".to_string(),
-            format: ExportFormat::Bin,
-        }
-    }
-}
-
-impl ExportWindow {
-    pub fn open(&mut self) {
-        self.open = true;
-    }
-
-    pub fn show(&mut self, ctx: &egui::Context, tiles: &[[u8; 64]], modified: &[bool]) -> Option<Result<String, String>> {
-        let mut still_open = self.open;
-        let mut export_status = None;
-
-        egui::Window::new("Export to...")
-            .open(&mut still_open)
-            .resizable(false)
-            .collapsible(false)
-            .default_pos(ctx.input(|i| i.viewport_rect()).center())
-            .pivot(egui::Align2::CENTER_CENTER)
-            .show(ctx, |ui| {
-                ui.horizontal(|ui| {
-                    ui.label("File name:");
-                    ui.text_edit_singleline(&mut self.file_name);
-                });
-
-                ui.horizontal(|ui| {
-                    ui.label("Format:");
-                    egui::ComboBox::from_id_salt("export_format")
-                        .selected_text(match self.format {
-                            ExportFormat::Bin => ".bin",
-                            ExportFormat::C => ".c",
-                        })
-                        .show_ui(ui, |ui| {
-                            ui.selectable_value(&mut self.format, ExportFormat::Bin, ".bin");
-                            ui.selectable_value(&mut self.format, ExportFormat::C, ".c");
-                        });
-                });
-
-                if self.format == ExportFormat::C {
-                    ui.horizontal(|ui| {
-                        ui.label("Array name:");
-                        ui.text_edit_singleline(&mut self.label_name);
-                    });
-                }
-
-                ui.separator();
-
-                if ui.button("Export").clicked() {
-                    export_status = self.do_export(tiles, modified);
-                    self.open = false;
-                }
-            });
-        self.open = self.open && still_open;
-        export_status
-    }
-
-    fn do_export(&self, tiles: &[[u8; 64]], modified: &[bool]) -> Option<Result<String, String>> {
-        let (default_name, ext): (String, &[&str]) = match self.format {
-            ExportFormat::Bin => (format!("{}.bin", self.file_name), &["bin"]),
-            ExportFormat::C => (format!("{}.c", self.file_name), &["c"]),
-        };
-
-        if let Some(path) = rfd::FileDialog::new()
-            .set_file_name(&default_name)
-            .add_filter("Gameboy Tile", ext)
-            .save_file()
-        {
-            let result = match self.format {
-                ExportFormat::Bin => export_to_bin(tiles, modified, &path),
-                ExportFormat::C => export_to_c(tiles, modified, &self.label_name, &path),
-            };
-            match result {
-                Ok(_) => Some(Ok(format!("Successfully exported to {:?}", path))),
-                Err(e) => Some(Err(format!("Failed to export project : {}", e))),
-            }
-        } else {
-            None
-        }
-    }
-}
+use std::result;
 
 pub fn pixels_to_2bpp(pixels: &[u8; 64]) -> [u8; 16] {
     let mut result_bytes = [0u8; 16];
@@ -124,8 +23,6 @@ pub fn pixels_to_2bpp(pixels: &[u8; 64]) -> [u8; 16] {
         result_bytes[row * 2] = low_bytes;
         result_bytes[row * 2 + 1] = high_bytes;
     }
-
-    // println!("{:?}", result_bytes); // only dev mode
 
     result_bytes
 }
@@ -158,4 +55,22 @@ pub fn export_to_c<P: AsRef<Path>>(tiles: &[[u8; 64]], modified: &[bool], name: 
 
     let mut file = File::create(path)?;
     file.write_all(content.as_bytes())
+}
+
+pub fn sanitize_c_ident(name: &str) -> String {
+    let mut result = String::new();
+
+    for c in name.chars() {
+        if c.is_ascii_alphanumeric() || c == '_' {
+            result.push(c);
+        } else {
+            result.push('_');
+        }
+    }
+
+    if result.is_empty() || result.chars().next().map_or(true, |c| c.is_ascii_digit()) {
+        result.insert(0, '_');
+    }
+
+    result
 }
