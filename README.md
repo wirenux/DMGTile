@@ -16,9 +16,6 @@
 
 ---
 
-> [!NOTE]
-> A computer with a dedicated GPU is recommended
-
 ## Table of Content
 - [Table of Content](#table-of-content)
 - [Why DMGTile even exist ( °ヮ° ) ?](#why-dmgtile-even-exist--ヮ--)
