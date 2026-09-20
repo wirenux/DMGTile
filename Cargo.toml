@@ -10,8 +10,7 @@ serde_json = "1.0.151"
 image = { version = "0.25", features = ["png"] }
 winres = "0.1.12"
 gpui = { version = "=0.3.5", package = "gpui-pre", features = ["objc2", "objc2-metal"] }
-gpui_platform = { version = "=0.3.5", package = "gpui-pre-platform", features = ["font-kit"] }
-gpui-component = "0.6.4"
+gpui_platform = { version = "=0.3.5", package = "gpui-pre-platform", features = ["font-kit", "x11", "wayland"] }
 
 [package.metadata.bundle]
 name = "DMGTile"
