@@ -79,20 +79,24 @@ pub fn get_icon_image(icon_name: &'static str) -> Arc<RenderImage> {
     static CACHE: OnceLock<HashMap<&'static str, Arc<RenderImage>>> = OnceLock::new();
 
     let cache = CACHE.get_or_init(|| {
-        let icons = [
-            "pen.png", "eraser.png", "bucket.png",
-            "left.png", "right.png", "up.png", "down.png",
-            "flipH.png", "flipV.png", "rotate.png",
+        let icon_data: [(&'static str, &'static [u8]); 10] = [
+            ("pen.png",    include_bytes!("../assets/aseprite/gpui/pen.png")),
+            ("eraser.png", include_bytes!("../assets/aseprite/gpui/eraser.png")),
+            ("bucket.png", include_bytes!("../assets/aseprite/gpui/bucket.png")),
+            ("left.png",   include_bytes!("../assets/aseprite/gpui/left.png")),
+            ("right.png",  include_bytes!("../assets/aseprite/gpui/right.png")),
+            ("up.png",     include_bytes!("../assets/aseprite/gpui/up.png")),
+            ("down.png",   include_bytes!("../assets/aseprite/gpui/down.png")),
+            ("flipH.png",  include_bytes!("../assets/aseprite/gpui/flipH.png")),
+            ("flipV.png",  include_bytes!("../assets/aseprite/gpui/flipV.png")),
+            ("rotate.png", include_bytes!("../assets/aseprite/gpui/rotate.png")),
         ];
 
         let mut map = HashMap::new();
         let scale = 4u32;
 
-        for name in icons {
-            let full_path = format!("{}/assets/aseprite/gpui/{}", env!("CARGO_MANIFEST_DIR"), name); // TODO: Maybe change the folder when release build
-            if let Ok(img_bytes) = std::fs::read(&full_path)
-                && let Ok(decoded) = image::load_from_memory(&img_bytes)
-            {
+        for (name, bytes) in icon_data {
+            if let Ok(decoded) = image::load_from_memory(bytes) {
                 let rgba = decoded.to_rgba8();
                 let orig_w = rgba.width();
                 let orig_h = rgba.height();
@@ -135,5 +139,8 @@ pub fn get_icon_image(icon_name: &'static str) -> Arc<RenderImage> {
         map
     });
 
-    cache.get(icon_name).cloned().expect("Icon missing from cache")
+    cache
+        .get(icon_name)
+        .cloned()
+        .unwrap_or_else(|| panic!("Icon missing from cache: {}", icon_name))
 }
